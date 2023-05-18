@@ -73,3 +73,5 @@ Hypergraph//Plugins/*/Intermediate/*
 # Cache files for the editor to use
 Hypergraph/DerivedDataCache/*
 Hypergraph/.idea/.idea.Hypergraph/.idea/workspace.xml
+
+UE4_Assets/*
