@@ -17,6 +17,7 @@ public:
 	ABaseCharacter();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
 	// Called when the game starts or when spawned
@@ -50,6 +51,19 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* LookAction;
 
-public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = UI, meta = (AllowPrivateAccess = "true"))
+	class UWidgetComponent* OverheadWidget;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UCharacterCombatComponent* CombatComponent;
+	
+
+	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
+	class ABaseWeapon* OverlappingWeapon;
+
+	UFUNCTION()
+	void OnRep_OverlappingWeapon(ABaseWeapon* LastWeapon);
+
+public:
+	void SetOverlappingWeapon(ABaseWeapon* Weapon);
 };
