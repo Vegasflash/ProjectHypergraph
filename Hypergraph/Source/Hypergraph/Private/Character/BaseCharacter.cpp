@@ -7,9 +7,11 @@
 #include "EnhancedInputSubsystems.h"
 #include "Camera/CameraComponent.h"
 #include "Character/CharacterCombatComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Weapon/BaseWeapon.h"
 
@@ -28,20 +30,36 @@ ABaseCharacter::ABaseCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 
 	bUseControllerRotationYaw = false;
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-
+	if(UCharacterMovementComponent* CharacterMvmnt = GetCharacterMovement())
+	{
+		CharacterMvmnt->bOrientRotationToMovement = true;
+		CharacterMvmnt->NavAgentProps.bCanCrouch = true;
+	}
+	
 	OverheadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("Overhead Display"));
 	OverheadWidget->SetupAttachment(RootComponent);
 	
 	CombatComponent = CreateDefaultSubobject<UCharacterCombatComponent>(TEXT("Combat Component"));
 	CombatComponent->SetIsReplicated(true);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 }
 
+#pragma region Character Defaults
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABaseCharacter, OverlappingWeapon, COND_OwnerOnly);
+}
+
+void ABaseCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if(CombatComponent)
+	{
+		CombatComponent->Character = this;
+	}
 }
 
 void ABaseCharacter::BeginPlay()
@@ -62,7 +80,11 @@ void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
+#pragma endregion
 
+#pragma region Custom Character Movement
+
+#pragma region Character Jump
 void ABaseCharacter::JumpStartActionCallback()
 {
 	// Use Basic Jumps for now.
@@ -74,6 +96,19 @@ void ABaseCharacter::JumpEndActionCallback()
 	// Use basic Jumps for now.
 	ACharacter::StopJumping();
 }
+#pragma endregion
+
+#pragma region Character Crouch
+void ABaseCharacter::CrouchStartActionCallback()
+{
+	ACharacter::Crouch();
+}
+
+void ABaseCharacter::CrouchEndActionCallback()
+{
+	ACharacter::UnCrouch();
+}
+#pragma endregion
 
 void ABaseCharacter::MoveActionCallback(const FInputActionValue& Value)
 {
@@ -109,6 +144,10 @@ void ABaseCharacter::LookActionCallback(const FInputActionValue& Value)
 	}
 }
 
+#pragma endregion 
+
+#pragma region Weapon Detection
+
 void ABaseCharacter::SetOverlappingWeapon(ABaseWeapon* Weapon)
 {
 	if(OverlappingWeapon)
@@ -139,6 +178,8 @@ void ABaseCharacter::OnRep_OverlappingWeapon(ABaseWeapon* LastWeapon)
 	}
 }
 
+#pragma endregion 
+
 void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -149,6 +190,12 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		                                   &ThisClass::JumpStartActionCallback);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this,
 		                                   &ThisClass::JumpEndActionCallback);
+		
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this,
+		                                   &ThisClass::CrouchStartActionCallback);
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this,
+		                                   &ThisClass::CrouchEndActionCallback);
+		
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::MoveActionCallback);
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::LookActionCallback);
 
@@ -156,7 +203,7 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		{
 			if(!Component->GetClass()->ImplementsInterface(UCharacterComponent::StaticClass())) continue;
 			
-			if(ICharacterComponent* CharComponent = Cast<ICharacterComponent>(Component))
+			if(const ICharacterComponent* CharComponent = Cast<ICharacterComponent>(Component))
 			{
 				CharComponent->Execute_SetupInputs(Component, EnhancedInputComponent);
 			}

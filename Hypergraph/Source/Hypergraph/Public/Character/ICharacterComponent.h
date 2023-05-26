@@ -24,4 +24,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category= Input)
 	void SetupInputs(UEnhancedInputComponent* PlayerInputComponent);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category= Input)
+	void DisableInputs(UEnhancedInputComponent* PlayerInputComponent);
 };

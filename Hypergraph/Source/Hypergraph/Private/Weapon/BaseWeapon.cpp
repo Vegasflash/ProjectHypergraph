@@ -6,6 +6,7 @@
 #include "Character/BaseCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Net/UnrealNetwork.h"
 
 ABaseWeapon::ABaseWeapon()
 {
@@ -28,6 +29,7 @@ ABaseWeapon::ABaseWeapon()
 }
 
 
+
 void ABaseWeapon::BeginPlay()
 {
 	Super::BeginPlay();
@@ -39,6 +41,12 @@ void ABaseWeapon::BeginPlay()
 void ABaseWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+void ABaseWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ABaseWeapon, WeaponState);
 }
 
 void ABaseWeapon::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -70,6 +78,32 @@ void ABaseWeapon::OnPawnOverlapEnd(UPrimitiveComponent* OverlappedComponent,
 	}
 }
 
+void ABaseWeapon::SetWeaponState(EWeaponState State)
+{
+	WeaponState = State;
+	if(WeaponState == EWeaponState::EWS_Equipped)
+	{
+		ShowPickupWidget(false);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+
+void ABaseWeapon::OnRep_WeaponState()
+{
+	switch (WeaponState)
+	{
+		case EWeaponState::EWS_Initial: break;
+		case EWeaponState::EWS_Equipped:
+			ShowPickupWidget(false);
+			break;
+		case EWeaponState::EWS_Dropped:
+			break;
+	
+		case EWeaponState::EWS_MAX: break;
+		default: ;
+	}
+}
 
 void ABaseWeapon::SetOverlapDetection(bool bActive)
 {
@@ -95,7 +129,6 @@ void ABaseWeapon::SetOverlapDetection(bool bActive)
 		}
 	}
 }
-
 
 void ABaseWeapon::ShowPickupWidget(bool bShowWidget)
 {

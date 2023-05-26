@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CharacterCombatComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
@@ -18,18 +19,22 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
+	virtual void PostInitializeComponents() override;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	
+
 	virtual void JumpStartActionCallback();
 	virtual void JumpEndActionCallback();
+	
+	virtual void CrouchStartActionCallback();
+	virtual void CrouchEndActionCallback();
+	
 	virtual void MoveActionCallback(const FInputActionValue& Value);
 	virtual void LookActionCallback(const FInputActionValue& Value);
 
 private:
-
 	// Camera 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* SpringArmComponent;
@@ -39,17 +44,19 @@ private:
 	// Input 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputMappingContext* DefaultMappingContext;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* JumpAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	class UInputAction* CrouchAction;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* MoveAction;
 
-	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* LookAction;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = UI, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverheadWidget;
@@ -57,7 +64,6 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UCharacterCombatComponent* CombatComponent;
 	
-
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
 	class ABaseWeapon* OverlappingWeapon;
 
@@ -66,4 +72,8 @@ private:
 
 public:
 	void SetOverlappingWeapon(ABaseWeapon* Weapon);
+	FORCEINLINE ABaseWeapon* GetOverlappingWeapon() const { return OverlappingWeapon; }
+	FORCEINLINE bool IsWeaponEquipped() const { return CombatComponent && CombatComponent->EquippedWeapon; }
+	FORCEINLINE bool IsAiming() const { return CombatComponent && CombatComponent->bIsAiming; }
+	FORCEINLINE UCharacterCombatComponent* GetCharacterCombat() const { return CombatComponent; }
 };
