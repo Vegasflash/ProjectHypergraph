@@ -11,8 +11,9 @@
 ABaseWeapon::ABaseWeapon()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	SetReplicates(true);
-
+	//SetReplicates(true);
+	bReplicates = true;
+	
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Mesh");
 	SetRootComponent(WeaponMesh);
 	WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
@@ -47,6 +48,14 @@ void ABaseWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ABaseWeapon, WeaponState);
+}
+
+void ABaseWeapon::Fire(const FVector& HitTarget)
+{
+	if(FireAnimation == nullptr) return;
+	
+	WeaponMesh->PlayAnimation(FireAnimation, false);
+	
 }
 
 void ABaseWeapon::EndPlay(const EEndPlayReason::Type EndPlayReason)

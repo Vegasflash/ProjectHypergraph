@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "VisualLogger/VisualLoggerTypes.h"
 
 /**
  * 
@@ -22,4 +21,14 @@ enum class EWeaponState : uint8
 	EWS_Dropped UMETA(DisplayName = "Dropped"),
 	
 	EWS_MAX UMETA(DisplayName = "DefaultMax"),
+};
+
+UENUM(BlueprintType)
+enum class ETurningInPlace : uint8
+{
+	ETIP_Left UMETA(DisplayName = "Left"),
+	ETIP_Right UMETA(DisplayName = "Right"),
+	ETIP_NotTurning UMETA(DisplayName = "Not Turning"),
+	
+	ETIP_MAX UMETA(DisplayName = "DefaultMax"),
 };

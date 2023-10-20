@@ -43,6 +43,10 @@ ABaseCharacter::ABaseCharacter()
 	CombatComponent->SetIsReplicated(true);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetCharacterMovement()->RotationRate = FRotator(0.f,0.f, 850.f);
+
+	NetUpdateFrequency = 66;
+	MinNetUpdateFrequency = 33;
 }
 
 #pragma region Character Defaults
@@ -141,6 +145,18 @@ void ABaseCharacter::LookActionCallback(const FInputActionValue& Value)
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
+	}
+}
+
+void ABaseCharacter::Jump()
+{
+	if(bIsCrouched)
+	{
+		UnCrouch();
+	}
+	else
+	{
+		Super::Jump();
 	}
 }
 

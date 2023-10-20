@@ -10,10 +10,22 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Weapon/BaseWeapon.h"
+#include "BaseCharacterAnimInstance.generated.h"
+#include "Kismet/GameplayStatics.h"
 
 UCharacterCombatComponent::UCharacterCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+	AimWalkSpeed = 600.f;
+}
+
+void UCharacterCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UCharacterCombatComponent, EquippedWeapon);
+	DOREPLIFETIME(UCharacterCombatComponent, bIsAiming);
 }
 
 void UCharacterCombatComponent::BeginPlay()
@@ -27,15 +39,9 @@ void UCharacterCombatComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	AimOffset(DeltaTime);
+	ScanUnderCrossHair(HitResult);
 }
 
-void UCharacterCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(UCharacterCombatComponent, EquippedWeapon);
-	DOREPLIFETIME(UCharacterCombatComponent, bIsAiming);
-}
 
 void UCharacterCombatComponent::SetupInputs_Implementation(UEnhancedInputComponent* PlayerInputComponent)
 {
@@ -44,6 +50,8 @@ void UCharacterCombatComponent::SetupInputs_Implementation(UEnhancedInputCompone
 		PlayerInputComponent->BindAction(EquipAction, ETriggerEvent::Triggered, this, &ThisClass::EquipInputPressed);
 		PlayerInputComponent->BindAction(AimAction, ETriggerEvent::Triggered, this, &ThisClass::AimInputPressed);
 		PlayerInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &ThisClass::AimInputReleased);
+		PlayerInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &UCharacterCombatComponent::ShootInputPressed);
+		PlayerInputComponent->BindAction(ShootAction, ETriggerEvent::Completed, this, &UCharacterCombatComponent::ShootInputReleased);
 	}
 }
 
@@ -160,19 +168,25 @@ void UCharacterCombatComponent::AimOffset(float DeltaTime)
 	const bool bIsInAir = Character->GetCharacterMovement()->IsFalling();
 
 	const float CurrentYaw = Character->GetBaseAimRotation().Yaw;
-	if(Speed == 0.1f && !bIsInAir)
+	if(Speed == 0.f && !bIsInAir)
 	{
 		const FRotator CurrentAimRotation = FRotator(0.f, CurrentYaw, 0.f);
 		const FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRot);
 		AimOffset_Yaw = DeltaAimRotation.Yaw;
-		Character->bUseControllerRotationYaw = false;
+		if(TurningInPlace == ETurningInPlace::ETIP_NotTurning)
+		{
+			Interp_AO_Yaw = AimOffset_Yaw;
+		}
+		Character->bUseControllerRotationYaw = true;
+		TurnInPlace(DeltaTime);
 	}
 	
-	if(Speed > 0.1f || bIsInAir)
+	if(Speed > 0.01f || bIsInAir)
 	{
 		StartingAimRot = FRotator(0.f, CurrentYaw, 0.f);
 		AimOffset_Yaw = 0.f;
 		Character->bUseControllerRotationYaw = true;
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 	}
 
 	AimOffset_Pitch = Character->GetBaseAimRotation().Pitch;
@@ -187,15 +201,34 @@ void UCharacterCombatComponent::AimOffset(float DeltaTime)
 	}
 }
 
+void UCharacterCombatComponent::TurnInPlace(float DeltaTime)
+{
+	if(AimOffset_Yaw > 90.0f)
+	{
+		TurningInPlace = ETurningInPlace::ETIP_Right;
+		
+	}
+	else if (AimOffset_Yaw < -90.0f)
+	{
+		TurningInPlace = ETurningInPlace::ETIP_Left;
+	}
+
+	if(TurningInPlace != ETurningInPlace::ETIP_NotTurning)
+	{
+		Interp_AO_Yaw = FMath::FInterpTo(Interp_AO_Yaw, 0, DeltaTime, 4.0f);
+		AimOffset_Yaw = Interp_AO_Yaw;
+		if(FMath::Abs(AimOffset_Yaw) < 15.0f)
+		{
+			const float CurrentYaw = Character->GetBaseAimRotation().Yaw;
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+			StartingAimRot = FRotator(0.f, CurrentYaw, 0.f);
+		}
+	}
+}
+
 #pragma endregion
 
 #pragma region Shoot Weapon
-void UCharacterCombatComponent::SetShooting(bool IsShooting)
-{
-	bIsShooting = IsShooting;
-	Server_SetShooting(IsShooting);
-}
-
 void UCharacterCombatComponent::OnRep_EquippedWeapon()
 {
 	if(EquippedWeapon && Character)
@@ -205,10 +238,8 @@ void UCharacterCombatComponent::OnRep_EquippedWeapon()
 	}
 }
 
-void UCharacterCombatComponent::Server_SetShooting_Implementation(bool IsShooting)
-{
-	bIsShooting = IsShooting;
-}
+
+
 
 void UCharacterCombatComponent::ShootInputPressed() { ShootInputProcess(true); }
 
@@ -217,7 +248,71 @@ void UCharacterCombatComponent::ShootInputReleased() { ShootInputProcess(false);
 void UCharacterCombatComponent::ShootInputProcess(bool IsPressed)
 {
 	if (!ValidateCharacterRef()) return;
-	
-	Server_SetShooting(IsPressed);
+
+	if(IsPressed)
+	{
+		ServerFire();
+	}
 }
+
+void UCharacterCombatComponent::ServerFire_Implementation()
+{
+	MulticastFire();
+}
+
+void UCharacterCombatComponent::MulticastFire_Implementation()
+{
+	if(EquippedWeapon)
+	{
+		PlayFireRifleMontage(true);
+		EquippedWeapon->Fire(HitResult.Location);
+	}
+}
+
+void UCharacterCombatComponent::PlayFireRifleMontage(bool bAiming)
+{
+	if(EquippedWeapon == nullptr && Character != nullptr) return;
+
+	UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance();
+	if(AnimInstance && FireRifleMontage)
+	{
+		AnimInstance->Montage_Play(FireRifleMontage);
+	}
+}
+
 #pragma endregion
+
+void UCharacterCombatComponent::ScanUnderCrossHair(FHitResult& TraceHitResult)
+{
+	FVector2d ViewportSize;
+	if(GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	FVector2D CrossHairLoc(ViewportSize.X * 0.5f, ViewportSize.Y * 0.5f);
+	FVector CrossHairWorldPos, CrossHairWorldDir;
+	
+	auto bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(
+		UGameplayStatics::GetPlayerController(this, 0),
+		CrossHairLoc,
+		CrossHairWorldPos,
+		CrossHairWorldDir
+		);
+
+	if(bScreenToWorld)
+	{
+		FVector Start = CrossHairWorldPos;
+		FVector End = Start + CrossHairWorldDir * TRACE_LENGTH;
+
+		GetWorld()->LineTraceSingleByChannel(TraceHitResult, Start, End, ECC_Visibility);
+		if(!TraceHitResult.bBlockingHit)
+		{
+			TraceHitResult.ImpactPoint = End;
+		}
+		else
+		{
+			DrawDebugSphere(GetWorld(), TraceHitResult.ImpactPoint, 5, 12, FColor::Red);
+		}
+	}
+}

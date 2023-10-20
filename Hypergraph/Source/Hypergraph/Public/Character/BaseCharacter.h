@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "CharacterCombatComponent.h"
+#include "GameEnums.h"
 #include "InputActionValue.h"
 #include "GameFramework/Character.h"
 #include "BaseCharacter.generated.h"
@@ -34,6 +35,8 @@ protected:
 	virtual void MoveActionCallback(const FInputActionValue& Value);
 	virtual void LookActionCallback(const FInputActionValue& Value);
 
+	virtual void Jump() override;
+
 private:
 	// Camera 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -56,8 +59,7 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* LookAction;
-
-
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = UI, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverheadWidget;
 
@@ -76,4 +78,5 @@ public:
 	FORCEINLINE bool IsWeaponEquipped() const { return CombatComponent && CombatComponent->EquippedWeapon; }
 	FORCEINLINE bool IsAiming() const { return CombatComponent && CombatComponent->bIsAiming; }
 	FORCEINLINE UCharacterCombatComponent* GetCharacterCombat() const { return CombatComponent; }
+	FORCEINLINE ETurningInPlace GetTurningInPlace () const {return CombatComponent ? CombatComponent->GetETurningInPlace() : ETurningInPlace::ETIP_MAX; }
 };

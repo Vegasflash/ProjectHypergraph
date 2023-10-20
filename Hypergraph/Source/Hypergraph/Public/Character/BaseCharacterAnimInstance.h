@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "GameEnums.h"
 #include "BaseCharacterAnimInstance.generated.h"
 
 /**
@@ -66,4 +67,7 @@ private:
 	
 	UPROPERTY(BlueprintReadOnly, Category = Weapon, meta=(AllowPrivateAccess = "true"))
 	FTransform LeftHandTransform;
+
+	UPROPERTY(BlueprintReadOnly, Category = Weapon, meta=(AllowPrivateAccess = "true"))
+	ETurningInPlace TurningInPlace;
 };

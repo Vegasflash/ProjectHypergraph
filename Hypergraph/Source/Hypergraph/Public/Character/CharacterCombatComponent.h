@@ -5,9 +5,13 @@
 #include "CoreMinimal.h"
 #include "ICharacterComponent.h"
 #include "InputAction.h"
+#include "GameEnums.h"
 #include "CharacterCombatComponent.generated.h"
 
+#define TRACE_LENGTH 10000
+
 class ABaseCharacter;
+
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class HYPERGRAPH_API UCharacterCombatComponent : public UActorComponent, public ICharacterComponent
@@ -35,7 +39,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	void SetAiming(bool IsAiming);
-	void SetShooting(bool IsShooting);
 	void AimOffset(float DeltaTime);
 
 	UFUNCTION(Server, Reliable)
@@ -43,7 +46,11 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_SetAiming(bool IsAiming);
 	UFUNCTION(Server, Reliable)
-	void Server_SetShooting(bool IsShooting);
+	void ServerFire();
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastFire();
+
+	void ScanUnderCrossHair(FHitResult& TraceHitResult);
 
 	UFUNCTION()
 	void OnRep_EquippedWeapon();
@@ -56,6 +63,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* ShootAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= Movement, meta = (AllowPrivateAccess = "true"))
+	float AimWalkSpeed;
+	
 	bool ValidateCharacterRef() const;
 	void EquipInputPressed();
 	void EquipDetectedWeapon();
@@ -68,6 +78,8 @@ private:
 	void ShootInputReleased();
 	void ShootInputProcess(bool IsPressed);
 
+	void PlayFireRifleMontage(bool bAiming);
+
 	UPROPERTY()
 	class ABaseCharacter* Character;
 	
@@ -77,16 +89,24 @@ private:
 	UPROPERTY(Replicated)
 	bool bIsAiming;
 	
-	UPROPERTY(Replicated)
-	bool bIsShooting;
-	
 	float AimOffset_Yaw;
+	float Interp_AO_Yaw;
 	float AimOffset_Pitch;
 	FRotator StartingAimRot;
 
+	ETurningInPlace TurningInPlace;
+	void TurnInPlace(float DeltaTime);
+
+	UPROPERTY(EditAnywhere, Category= "Combat")
+	class UAnimMontage* FireRifleMontage;
+
+	FHitResult HitResult;
 public:
 
 	FORCEINLINE float GetAO_Yaw() const { return AimOffset_Yaw; }
 	FORCEINLINE float GetAO_Pitch() const { return AimOffset_Pitch; }
 	FORCEINLINE ABaseWeapon* GetEquippedWeapon() const {return EquippedWeapon; }
+	FORCEINLINE ETurningInPlace GetETurningInPlace() const {return TurningInPlace; }
+	FORCEINLINE float GetAimWalkSpeed() const {return AimWalkSpeed; }
+	FORCEINLINE FHitResult GetHitResult() const {return HitResult; }
 };

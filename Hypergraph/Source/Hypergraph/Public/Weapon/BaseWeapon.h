@@ -18,6 +18,8 @@ public:
 	void ShowPickupWidget(bool bShowWidget);
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	virtual void Fire(const FVector& HitTarget);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -48,6 +50,9 @@ private:
 	void OnRep_WeaponState();
 
 	void SetOverlapDetection(bool bActive);
+
+	UPROPERTY(EditAnywhere, Category="Weapon Properties")
+	UAnimationAsset* FireAnimation;
 
 public:
 	void SetWeaponState(EWeaponState State);
