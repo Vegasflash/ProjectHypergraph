@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameEnums.h"
 #include "GameFramework/Actor.h"
+#include "Cartridge.h"
 #include "BaseWeapon.generated.h"
 
 UCLASS()
@@ -42,6 +43,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category= UI)
 	class UWidgetComponent* PickupPromptWidget;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ACartridge> Cartridge;
 
 	UPROPERTY(ReplicatedUsing= OnRep_WeaponState, VisibleAnywhere, Category="Weapoon Properties")
 	EWeaponState WeaponState;

@@ -39,7 +39,6 @@ void UCharacterCombatComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	AimOffset(DeltaTime);
-	ScanUnderCrossHair(HitResult);
 }
 
 
@@ -251,21 +250,23 @@ void UCharacterCombatComponent::ShootInputProcess(bool IsPressed)
 
 	if(IsPressed)
 	{
-		ServerFire();
+		FHitResult HitResult;
+		ScanUnderCrossHair(HitResult);
+		ServerFire(HitResult.ImpactPoint);
 	}
 }
 
-void UCharacterCombatComponent::ServerFire_Implementation()
+void UCharacterCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
-	MulticastFire();
+	MulticastFire(TraceHitTarget);
 }
 
-void UCharacterCombatComponent::MulticastFire_Implementation()
+void UCharacterCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
 	if(EquippedWeapon)
 	{
 		PlayFireRifleMontage(true);
-		EquippedWeapon->Fire(HitResult.Location);
+		EquippedWeapon->Fire(TraceHitTarget);
 	}
 }
 
@@ -309,10 +310,6 @@ void UCharacterCombatComponent::ScanUnderCrossHair(FHitResult& TraceHitResult)
 		if(!TraceHitResult.bBlockingHit)
 		{
 			TraceHitResult.ImpactPoint = End;
-		}
-		else
-		{
-			DrawDebugSphere(GetWorld(), TraceHitResult.ImpactPoint, 5, 12, FColor::Red);
 		}
 	}
 }

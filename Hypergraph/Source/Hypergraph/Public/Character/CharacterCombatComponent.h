@@ -46,9 +46,9 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_SetAiming(bool IsAiming);
 	UFUNCTION(Server, Reliable)
-	void ServerFire();
+	void ServerFire(const FVector_NetQuantize& TraceHitTarget);
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastFire();
+	void MulticastFire(const FVector_NetQuantize& TraceHitTarget);
 
 	void ScanUnderCrossHair(FHitResult& TraceHitResult);
 
@@ -100,7 +100,6 @@ private:
 	UPROPERTY(EditAnywhere, Category= "Combat")
 	class UAnimMontage* FireRifleMontage;
 
-	FHitResult HitResult;
 public:
 
 	FORCEINLINE float GetAO_Yaw() const { return AimOffset_Yaw; }
@@ -108,5 +107,4 @@ public:
 	FORCEINLINE ABaseWeapon* GetEquippedWeapon() const {return EquippedWeapon; }
 	FORCEINLINE ETurningInPlace GetETurningInPlace() const {return TurningInPlace; }
 	FORCEINLINE float GetAimWalkSpeed() const {return AimWalkSpeed; }
-	FORCEINLINE FHitResult GetHitResult() const {return HitResult; }
 };

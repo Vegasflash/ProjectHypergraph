@@ -54,8 +54,17 @@ void ABaseWeapon::Fire(const FVector& HitTarget)
 {
 	if(FireAnimation == nullptr) return;
 	
+	if (WeaponMesh == nullptr) return;
+
 	WeaponMesh->PlayAnimation(FireAnimation, false);
-	
+
+	if (Cartridge == nullptr) return;
+
+	auto Transform = WeaponMesh->GetSocketTransform(FName("AmmoEject"));
+	if (auto World = GetWorld())
+	{
+		World->SpawnActor<ACartridge>(Cartridge, Transform);
+	}
 }
 
 void ABaseWeapon::EndPlay(const EEndPlayReason::Type EndPlayReason)

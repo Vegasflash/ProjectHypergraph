@@ -9,6 +9,8 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 {
 	Super::Fire(HitTarget);
 
+	if (!HasAuthority()) return;
+
 	FActorSpawnParameters SpawnParams;
 	APawn* InstigatorPawn = Cast<APawn>(GetOwner());
 	SpawnParams.Owner = GetOwner();
