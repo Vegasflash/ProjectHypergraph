@@ -6,6 +6,7 @@
 #include "ICharacterComponent.h"
 #include "InputAction.h"
 #include "GameEnums.h"
+#include "HUD/ShooterHUD.h"
 #include "CharacterCombatComponent.generated.h"
 
 #define TRACE_LENGTH 10000
@@ -82,6 +83,9 @@ private:
 
 	UPROPERTY()
 	class ABaseCharacter* Character;
+	class APlayerController* PlayerController;
+	class AShooterHUD* ShooterHUD;
+	FHUDPackage HUDPackage;
 	
 	UPROPERTY(ReplicatedUsing= OnRep_EquippedWeapon)
 	class ABaseWeapon* EquippedWeapon;
@@ -94,12 +98,54 @@ private:
 	float AimOffset_Pitch;
 	FRotator StartingAimRot;
 
+	// Crosshair Variables
+	double CrosshairVelocityFactor;
+	double CrosshairInAirFactor;
+	double CrosshairFiringFactor;
+	double CrosshairAimFactor;
+
+	UPROPERTY(EditAnywhere, Category="Crosshair")
+	float MaxCrosshairInAirSpread;
+
+	UPROPERTY(EditAnywhere, Category="Crosshair")
+	float CrosshairSpreadInAirInterpSpeed;
+	
+	UPROPERTY(EditAnywhere, Category="Crosshair")
+	float CrosshairSpreadLandedInterpSpeed;
+	
+	UPROPERTY(EditAnywhere, Category="Crosshair")
+	float CrosshairSpreadRecoilReductionInterpSpeed;
+
+	UPROPERTY(EditAnywhere, Category="Crosshair")
+	float CrossHairOffsetDefault = 0.5f;
+
+	/*
+	* Aiming and FoV
+	*/
+	float DefaultFOV; // When not aiming weapon, lerp back to this default.
+	float CurrentFOV;
+
+	UPROPERTY(EditAnywhere, Category = Zoom)
+	float ZoomedFoV = 30.f;
+
+	UPROPERTY(EditAnywhere, Category = Zoom)
+	float UnZoomInterpSpeed = 20.f;
+
+	UPROPERTY(EditAnywhere, Category = Zoom)
+	float CrossHairZoomedOffset = 0.58f;
+
+	void InterpFoV(float DeltaTime);
+	//
+
 	ETurningInPlace TurningInPlace;
 	void TurnInPlace(float DeltaTime);
 
 	UPROPERTY(EditAnywhere, Category= "Combat")
 	class UAnimMontage* FireRifleMontage;
 
+	void SetHUDCrosshairs(float DeltaTime);
+
+	FHitResult ScanHitResult;
 public:
 
 	FORCEINLINE float GetAO_Yaw() const { return AimOffset_Yaw; }
@@ -107,4 +153,5 @@ public:
 	FORCEINLINE ABaseWeapon* GetEquippedWeapon() const {return EquippedWeapon; }
 	FORCEINLINE ETurningInPlace GetETurningInPlace() const {return TurningInPlace; }
 	FORCEINLINE float GetAimWalkSpeed() const {return AimWalkSpeed; }
+	FORCEINLINE const bool GetIsAiming() const {return bIsAiming; }
 };

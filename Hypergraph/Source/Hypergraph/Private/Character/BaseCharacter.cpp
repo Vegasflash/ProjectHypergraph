@@ -43,6 +43,7 @@ ABaseCharacter::ABaseCharacter()
 	CombatComponent->SetIsReplicated(true);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	GetCharacterMovement()->RotationRate = FRotator(0.f,0.f, 850.f);
 
 	NetUpdateFrequency = 66;
@@ -83,6 +84,8 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	HideCameraIfCameraClose();
 }
 #pragma endregion
 
@@ -192,6 +195,27 @@ void ABaseCharacter::OnRep_OverlappingWeapon(ABaseWeapon* LastWeapon)
 	{
 		LastWeapon->ShowPickupWidget(false);
 	}
+}
+
+void ABaseCharacter::HideCameraIfCameraClose()
+{
+	if (!IsLocallyControlled()) return;
+
+	bool shouldHideCam = (FollowCamera->GetComponentLocation() - GetActorLocation()).Size() > CameraThreshold;
+
+	GetMesh()->SetVisibility(shouldHideCam);
+	if (CombatComponent)
+	{
+		if (auto Weapon = CombatComponent->GetEquippedWeapon())
+		{
+			Weapon->GetWeaponMesh()->SetOwnerNoSee(!shouldHideCam);
+		}
+	}
+}
+
+void ABaseCharacter::DebugHitScan()
+{
+	bHitScanDebugEnabled = !bHitScanDebugEnabled;
 }
 
 #pragma endregion 

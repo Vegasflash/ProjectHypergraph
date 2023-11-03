@@ -1,8 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Character/BaseCharacterAnimInstance.h"
-
 #include "Character/BaseCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -73,6 +71,25 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 				                                    FRotator::ZeroRotator, OutLocation, OutRotation);
 				LeftHandTransform.SetLocation(OutLocation);
 				LeftHandTransform.SetRotation(FQuat(OutRotation));
+
+				auto CrosshairImpactPoint = BaseCharacter->GetScanHitResult()->ImpactPoint;
+
+				bLocallyControlled = BaseCharacter->IsLocallyControlled();
+				if (bLocallyControlled)
+				{
+					const auto RightHandTransform = WeaponMesh->GetSocketTransform(FName("hand_r"), RTS_World);
+					FRotator WeaponLookAtDir = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(), RightHandTransform.GetLocation() + (RightHandTransform.GetLocation() - CrosshairImpactPoint));
+					RightHandRotation = FMath::RInterpTo(RightHandRotation, WeaponLookAtDir, DeltaTime, 15.f);
+
+					const auto MuzzleTipTransform = WeaponMesh->GetSocketTransform(FName(("MuzzleFlash")));
+					FVector MuzzleX(FRotationMatrix(MuzzleTipTransform.GetRotation().Rotator()).GetUnitAxis(EAxis::X));
+
+					if (BaseCharacter->DebugHitScanEnabled())
+					{
+						DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(), MuzzleTipTransform.GetLocation() + MuzzleX * 1000.f, FColor::Red);
+						DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(), CrosshairImpactPoint, FColor::Orange);
+					}
+				}
 			}
 		}
 	}

@@ -8,7 +8,8 @@
 #include "Components/WidgetComponent.h"
 #include "Net/UnrealNetwork.h"
 
-ABaseWeapon::ABaseWeapon()
+ABaseWeapon::ABaseWeapon() :
+	RecoilIntensity(1.0f)
 {
 	PrimaryActorTick.bCanEverTick = false;
 	//SetReplicates(true);

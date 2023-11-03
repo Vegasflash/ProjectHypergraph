@@ -7,10 +7,11 @@
 #include "GameEnums.h"
 #include "InputActionValue.h"
 #include "GameFramework/Character.h"
+#include "Interfaces/CrosshairInteractable.h"
 #include "BaseCharacter.generated.h"
 
 UCLASS()
-class HYPERGRAPH_API ABaseCharacter : public ACharacter
+class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInteractable
 {
 	GENERATED_BODY()
 
@@ -72,6 +73,16 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(ABaseWeapon* LastWeapon);
 
+	void HideCameraIfCameraClose();
+
+	UPROPERTY(EditAnywhere, Category="Camera")
+	float CameraThreshold = 200.f;
+	/*DEBUG*/
+	UFUNCTION(Exec, Category = "Commands")
+	void DebugHitScan();
+	bool bHitScanDebugEnabled = false;
+	/**/
+
 public:
 	void SetOverlappingWeapon(ABaseWeapon* Weapon);
 	FORCEINLINE ABaseWeapon* GetOverlappingWeapon() const { return OverlappingWeapon; }
@@ -79,4 +90,10 @@ public:
 	FORCEINLINE bool IsAiming() const { return CombatComponent && CombatComponent->bIsAiming; }
 	FORCEINLINE UCharacterCombatComponent* GetCharacterCombat() const { return CombatComponent; }
 	FORCEINLINE ETurningInPlace GetTurningInPlace () const {return CombatComponent ? CombatComponent->GetETurningInPlace() : ETurningInPlace::ETIP_MAX; }
+	FORCEINLINE FHitResult* GetScanHitResult() const { return CombatComponent ? &CombatComponent->ScanHitResult : nullptr; }
+	FORCEINLINE UCameraComponent* GetCamera() const { return FollowCamera; }
+
+	/*DEBUG*/
+	FORCEINLINE const bool DebugHitScanEnabled() const { return bHitScanDebugEnabled; }
+	/**/
 };
