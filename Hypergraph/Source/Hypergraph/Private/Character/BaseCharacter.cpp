@@ -201,14 +201,14 @@ void ABaseCharacter::HideCameraIfCameraClose()
 {
 	if (!IsLocallyControlled()) return;
 
-	bool shouldHideCam = (FollowCamera->GetComponentLocation() - GetActorLocation()).Size() > CameraThreshold;
+	bool HidePlayer = (FollowCamera->GetComponentLocation() - GetActorLocation()).Size() > CameraThreshold;
 
-	GetMesh()->SetVisibility(shouldHideCam);
+	GetMesh()->SetVisibility(HidePlayer);
 	if (CombatComponent)
 	{
 		if (auto Weapon = CombatComponent->GetEquippedWeapon())
 		{
-			Weapon->GetWeaponMesh()->SetOwnerNoSee(!shouldHideCam);
+			Weapon->GetWeaponMesh()->SetOwnerNoSee(!HidePlayer);
 		}
 	}
 }

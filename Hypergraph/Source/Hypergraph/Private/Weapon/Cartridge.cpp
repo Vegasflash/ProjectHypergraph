@@ -15,6 +15,7 @@ ACartridge::ACartridge()
 	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(FName(TEXT("StaticMesh")));
 	SetRootComponent(StaticMeshComponent);
 	StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECR_Ignore);
+	StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECR_Ignore);
 	StaticMeshComponent->SetNotifyRigidBodyCollision(true);
 	StaticMeshComponent->SetSimulatePhysics(true);
 	StaticMeshComponent->SetEnableGravity(true);
