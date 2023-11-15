@@ -26,6 +26,9 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = Character, meta=(AllowPrivateAccess = "true"))
 	class ABaseCharacter* BaseCharacter;
 
+	UPROPERTY(BlueprintReadOnly, Category = Character, meta = (AllowPrivateAccess = "true"))
+	bool bKilled;
+
 	UPROPERTY(BlueprintReadOnly, Category = Movement, meta=(AllowPrivateAccess = "true"))
 	float Speed;
 
@@ -76,4 +79,7 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = Weapon, meta = (AllowPrivateAccess = "true"))
 	bool bLocallyControlled;
+
+	UPROPERTY(BlueprintReadOnly, Category = Weapon, meta = (AllowPrivateAccess = "true"))
+	bool bRotateRootBone;
 };

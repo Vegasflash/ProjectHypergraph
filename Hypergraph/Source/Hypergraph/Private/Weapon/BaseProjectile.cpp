@@ -4,6 +4,8 @@
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundCue.h"
+#include "Character/BaseCharacter.h"
+#include "Hypergraph.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 ABaseProjectile::ABaseProjectile()
@@ -20,6 +22,8 @@ ABaseProjectile::ABaseProjectile()
 	CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECC_Visibility, ECollisionResponse::ECR_Block);
 	CollisionBox->SetCollisionResponseToChannel(ECC_WorldStatic, ECollisionResponse::ECR_Block);
+	CollisionBox->SetCollisionResponseToChannel(ECC_Pawn, ECollisionResponse::ECR_Ignore);
+	CollisionBox->SetCollisionResponseToChannel(ECC_SkeletalMesh, ECollisionResponse::ECR_Block);
 
 	ProjectileMovementComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectilveMovementComponent"));
 	ProjectileMovementComp->bRotationFollowsVelocity = true;
@@ -38,28 +42,34 @@ void ABaseProjectile::BeginPlay()
 	{
 		CollisionBox->OnComponentHit.AddDynamic(this, &ABaseProjectile::OnHit);
 	}
-	
+
 }
 
 
 void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	ESurfaceType HitSurface = ESurfaceType::Default;
+
+	if (ProjectileData != nullptr)
+	{
+		FProjectileImpactData ImpactData = ProjectileData->GetImpactData()[HitSurface];
+		if (ImpactData.ImpactFX)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactData.ImpactFX, GetActorTransform());
+		}
+
+		if (ImpactData.ImpactSFX)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, ImpactData.ImpactSFX, GetActorLocation());
+		}
+	}
+
 	Destroy();
 }
 
 void ABaseProjectile::Destroyed()
 {
 	Super::Destroyed();
-
-	if (ImpactParticles)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
-	}
-
-	if (ImpactSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
-	}
 }
 
 void ABaseProjectile::Tick(float DeltaTime)

@@ -50,3 +50,35 @@ enum class EWeaponType : uint8
 	EWT_Rifle UMETA(DisplayName = "Rifle"),
 	EWT_Pistol UMETA(DisplayName = "Pistol"),
 };
+
+UENUM(BlueprintType)
+enum class EDirection : uint8
+{
+	ED_Forward UMETA(DisplayName = "Forward"),
+	ED_Right UMETA(DisplayName = "Right"),
+	ED_Back UMETA(DisplayName = "Back"),
+	ED_Left UMETA(DisplayName = "Left")
+};
+
+UENUM(BlueprintType, meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum class EFiringMode : uint8
+{
+	NONE = 0 UMETA(Hidden),
+	EFM_Single = 1 << 0 UMETA(DisplayName = "Single"),
+	EFM_Burst = 1 << 1 UMETA(DisplayName = "Burst"),
+	EFM_FullAuto = 1 << 2 UMETA(DisplayName = "FullAuto"),
+};
+ENUM_CLASS_FLAGS(EFiringMode);
+// Suggested path name for the enum type: This is required to remove the warning.
+#define PATH_EFiringMode "/Script/Hypergraph.EFiringMode"
+
+UENUM(BlueprintType)
+enum class ESurfaceType : uint8
+{
+	Default UMETA(DisplayName = "Default"),
+	Wood UMETA(DisplayName = "Wood"),
+	Stone UMETA(DisplayName = "Stone"),
+	Metal UMETA(DisplayName = "Metal"),
+	Water UMETA(DisplayName = "Water"),
+	Flesh UMETA(DisplayName = "Flesh"),
+};

@@ -16,7 +16,7 @@ class HYPERGRAPH_API UOverheadWidget : public UUserWidget
 
 public:
 
-	UPROPERTY(meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 	class UTextBlock* DisplayText;
 
 	UFUNCTION(BlueprintCallable)

@@ -23,6 +23,11 @@ UCharacterCombatComponent::UCharacterCombatComponent() :
 	PrimaryComponentTick.bCanEverTick = true;
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 	AimWalkSpeed = 600.f;
+
+	DirectionNameForMontageMap.Add(EDirection::ED_Forward, "FromFront");
+	DirectionNameForMontageMap.Add(EDirection::ED_Back, "FromBack");
+	DirectionNameForMontageMap.Add(EDirection::ED_Right, "FromRight");
+	DirectionNameForMontageMap.Add(EDirection::ED_Left, "FromLeft");
 }
 
 void UCharacterCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -37,29 +42,67 @@ void UCharacterCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (Character)
+	Character = Character == nullptr ? Cast<ABaseCharacter>(GetOwner()) : Character;
+
+	if (auto camera = Character->GetCamera())
 	{
-		if (auto camera = Character->GetCamera())
-		{
-			DefaultFOV = camera->FieldOfView;
-			CurrentFOV = DefaultFOV;
-		}
+		DefaultFOV = camera->FieldOfView;
+		CurrentFOV = DefaultFOV;
 	}
 }
 
 void UCharacterCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                              FActorComponentTickFunction* ThisTickFunction)
+	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	AimOffset(DeltaTime);
+	if (Character == nullptr) return;
 
-	if (Character && Character->IsLocallyControlled())
+	if (Character->GetLocalRole() > ENetRole::ROLE_SimulatedProxy && Character->IsLocallyControlled())
+	{
+		AimOffset(DeltaTime);
+	}
+	else
+	{
+		TimeSinceLastMovementReplication += DeltaTime;
+		if (TimeSinceLastMovementReplication > 0.25f) // If server hasn't ticked in a quarter second, we'll force a refresh.
+		{
+			Execute_OnRep_ReplicatedMovement(this);
+		}
+		CalculateAO_Pitch();
+	}
+
+	if (Character->IsLocallyControlled())
 	{
 		SetHUDCrosshairs(DeltaTime);
 		ScanUnderCrossHair(ScanHitResult);
 		InterpFoV(DeltaTime);
 	}
+
+	if (EquippedWeapon != nullptr)
+	{
+		if (ShotIntervalCooldown > 0)
+		{
+			ShotIntervalCooldown -= DeltaTime;
+		}
+
+		if (bIsFiring && EquippedWeapon != nullptr && CurrentFiringMode > EFiringMode::EFM_Single)
+		{
+
+			if (ShotIntervalCooldown <= 0)
+			{
+				ProcessFiring();
+			}
+		}
+	}
+
+	
+}
+
+void UCharacterCombatComponent::OnRep_ReplicatedMovement_Implementation()
+{
+	SimProxiesTurn();
+	TimeSinceLastMovementReplication = 0;
 }
 
 
@@ -113,14 +156,15 @@ void UCharacterCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip)
 		if (GEngine)
 		{
 			GEngine->AddOnScreenDebugMessage(0, 10, FColor::Cyan,
-			                                 FString::Printf(
-				                                 TEXT("Could not find SocketName: %s"), *SocketName.ToString()));
+				FString::Printf(
+					TEXT("Could not find SocketName: %s"), *SocketName.ToString()));
 		}
 	}
 
 	EquippedWeapon->SetOwner(Character);
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 	Character->bUseControllerRotationYaw = true;
+	SetFiringMode(EquippedWeapon->GetWeaponData()->GetDefaultFiringMode());
 }
 
 void UCharacterCombatComponent::Server_EquipButtonPressed_Implementation()
@@ -153,6 +197,13 @@ void UCharacterCombatComponent::EquipDetectedWeapon()
 
 #pragma endregion
 
+#pragma region Set Firing Mode
+void UCharacterCombatComponent::SetFiringMode(EFiringMode FiringMode)
+{
+	CurrentFiringMode = FiringMode;
+}
+#pragma endregion
+
 #pragma region Aim Weapon
 
 void UCharacterCombatComponent::SetAiming(bool IsAiming)
@@ -164,7 +215,7 @@ void UCharacterCombatComponent::SetAiming(bool IsAiming)
 void UCharacterCombatComponent::Server_SetAiming_Implementation(bool IsAiming)
 {
 	bIsAiming = IsAiming;
-	
+
 }
 
 void UCharacterCombatComponent::AimInputPressed() { AimInputProcess(true); }
@@ -174,45 +225,51 @@ void UCharacterCombatComponent::AimInputReleased() { AimInputProcess(false); }
 void UCharacterCombatComponent::AimInputProcess(bool IsPressed)
 {
 	if (!ValidateCharacterRef()) return;
-	
+
 	SetAiming(IsPressed);
 }
 
 void UCharacterCombatComponent::AimOffset(float DeltaTime)
 {
-	if(EquippedWeapon == nullptr || Character == nullptr) return;
-	
-	FVector Velocity = Character->GetVelocity();
-	Velocity.Z = 0.f;
-	const float Speed = Velocity.Size();
+	if (EquippedWeapon == nullptr || Character == nullptr) return;
+
 	const bool bIsInAir = Character->GetCharacterMovement()->IsFalling();
 
 	const float CurrentYaw = Character->GetBaseAimRotation().Yaw;
-	if(Speed == 0.f && !bIsInAir)
+	auto Speed = CalculateSpeed();
+
+	if (Speed == 0.f && !bIsInAir)
 	{
+		bRotateRootBone = true;
 		const FRotator CurrentAimRotation = FRotator(0.f, CurrentYaw, 0.f);
 		const FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRot);
 		AimOffset_Yaw = DeltaAimRotation.Yaw;
-		if(TurningInPlace == ETurningInPlace::ETIP_NotTurning)
+		if (TurningInPlace == ETurningInPlace::ETIP_NotTurning)
 		{
 			Interp_AO_Yaw = AimOffset_Yaw;
 		}
 		Character->bUseControllerRotationYaw = true;
 		TurnInPlace(DeltaTime);
 	}
-	
-	if(Speed > 0.01f || bIsInAir)
+
+	if (Speed > 0.01f || bIsInAir)
 	{
+		bRotateRootBone = false;
 		StartingAimRot = FRotator(0.f, CurrentYaw, 0.f);
 		AimOffset_Yaw = 0.f;
 		Character->bUseControllerRotationYaw = true;
 		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 	}
 
+	CalculateAO_Pitch();
+}
+
+void UCharacterCombatComponent::CalculateAO_Pitch()
+{
 	AimOffset_Pitch = Character->GetBaseAimRotation().Pitch;
-	
+
 	// Unreal compresses the the Rotator's float to an int, we need to offset the difference on the Server.
-	if(AimOffset_Pitch > 90.f && !Character->IsLocallyControlled())
+	if (AimOffset_Pitch > 90.f && !Character->IsLocallyControlled())
 	{
 		// map pitch from [270, 360) to [-90, 0)
 		const FVector2d InRange = FVector2d(270.f, 360.f);
@@ -220,6 +277,54 @@ void UCharacterCombatComponent::AimOffset(float DeltaTime)
 		AimOffset_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AimOffset_Pitch);
 	}
 }
+
+void UCharacterCombatComponent::SimProxiesTurn()
+{
+	if (EquippedWeapon == nullptr) return;
+
+	bRotateRootBone = false;
+	auto Speed = CalculateSpeed();
+
+	if (Speed > 0.f)
+	{
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		return;
+	}
+
+	if (Character)
+	{
+		ProxyRotationLastFrame = ProxyRotation;
+		ProxyRotation = Character->GetActorRotation();
+		ProxyYaw = UKismetMathLibrary::NormalizedDeltaRotator(ProxyRotation, ProxyRotationLastFrame).Yaw;
+
+		if (FMath::Abs(ProxyYaw) > TurnThreshold)
+		{
+			if (ProxyYaw > TurnThreshold)
+			{
+				TurningInPlace = ETurningInPlace::ETIP_Right;
+			}
+			else if (ProxyYaw < -TurnThreshold)
+			{
+				TurningInPlace = ETurningInPlace::ETIP_Right;
+			}
+			else
+			{
+				TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+			}
+			return;
+		}
+	}
+
+	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+}
+
+const float UCharacterCombatComponent::CalculateSpeed() const
+{
+	FVector Velocity = Character->GetVelocity();
+	Velocity.Z = 0.f;
+	return Velocity.Size();
+}
+
 #pragma endregion
 
 void UCharacterCombatComponent::InterpFoV(float DeltaTime)
@@ -228,7 +333,8 @@ void UCharacterCombatComponent::InterpFoV(float DeltaTime)
 
 	if (bIsAiming)
 	{
-		CurrentFOV = FMath::FInterpTo(CurrentFOV, EquippedWeapon->GetZoomedFoV(), DeltaTime, EquippedWeapon->GetZoomInterpSpeed());
+		const UWeaponDataAsset* WeaponData = EquippedWeapon->GetWeaponData();
+		CurrentFOV = FMath::FInterpTo(CurrentFOV, WeaponData->GetZoomedFoV(), DeltaTime, WeaponData->GetZoomInterpSpeed());
 	}
 	else
 	{
@@ -246,21 +352,21 @@ void UCharacterCombatComponent::InterpFoV(float DeltaTime)
 
 void UCharacterCombatComponent::TurnInPlace(float DeltaTime)
 {
-	if(AimOffset_Yaw > 90.0f)
+	if (AimOffset_Yaw > 90.0f)
 	{
 		TurningInPlace = ETurningInPlace::ETIP_Right;
-		
+
 	}
 	else if (AimOffset_Yaw < -90.0f)
 	{
 		TurningInPlace = ETurningInPlace::ETIP_Left;
 	}
 
-	if(TurningInPlace != ETurningInPlace::ETIP_NotTurning)
+	if (TurningInPlace != ETurningInPlace::ETIP_NotTurning)
 	{
 		Interp_AO_Yaw = FMath::FInterpTo(Interp_AO_Yaw, 0, DeltaTime, 4.0f);
 		AimOffset_Yaw = Interp_AO_Yaw;
-		if(FMath::Abs(AimOffset_Yaw) < 15.0f)
+		if (FMath::Abs(AimOffset_Yaw) < 15.0f)
 		{
 			const float CurrentYaw = Character->GetBaseAimRotation().Yaw;
 			TurningInPlace = ETurningInPlace::ETIP_NotTurning;
@@ -331,7 +437,7 @@ void UCharacterCombatComponent::SetHUDCrosshairs(float DeltaTime)
 
 				/*
 				* Crosshair Firing Offset
-				*/ 
+				*/
 				CrosshairFiringFactor = FMath::FInterpTo(CrosshairFiringFactor, 0, DeltaTime, CrosshairSpreadRecoilReductionInterpSpeed);
 
 
@@ -340,7 +446,7 @@ void UCharacterCombatComponent::SetHUDCrosshairs(float DeltaTime)
 				*/
 				if (bIsAiming)
 				{
-					CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, CrossHairZoomedOffset, DeltaTime, EquippedWeapon->GetZoomInterpSpeed());
+					CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, CrossHairZoomedOffset, DeltaTime, EquippedWeapon->GetWeaponData()->GetZoomInterpSpeed());
 				}
 				else
 				{
@@ -349,7 +455,7 @@ void UCharacterCombatComponent::SetHUDCrosshairs(float DeltaTime)
 			}
 
 			HUDPackage.CrosshairSpread =
-				CrossHairOffsetDefault + 
+				CrossHairOffsetDefault +
 				CrosshairVelocityFactor +
 				CrosshairInAirFactor +
 				CrosshairFiringFactor -
@@ -363,7 +469,7 @@ void UCharacterCombatComponent::SetHUDCrosshairs(float DeltaTime)
 #pragma region Shoot Weapon
 void UCharacterCombatComponent::OnRep_EquippedWeapon()
 {
-	if(EquippedWeapon && Character)
+	if (EquippedWeapon && Character)
 	{
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 		Character->bUseControllerRotationYaw = true;
@@ -377,13 +483,23 @@ void UCharacterCombatComponent::ShootInputReleased() { ShootInputProcess(false);
 void UCharacterCombatComponent::ShootInputProcess(bool IsPressed)
 {
 	if (!ValidateCharacterRef()) return;
+	if (EquippedWeapon == nullptr) return;
 
-	if(IsPressed)
+	bIsFiring = IsPressed;
+
+	if (bIsFiring && ShotIntervalCooldown <= 0)
 	{
-		FHitResult HitResult;
-		ScanUnderCrossHair(HitResult);
-		ServerFire(HitResult.ImpactPoint);
+		ProcessFiring();
 	}
+}
+
+void UCharacterCombatComponent::ProcessFiring()
+{
+	ShotIntervalCooldown = EquippedWeapon->GetWeaponData()->GetTimeBetweenShotsInterval();
+
+	FHitResult HitResult;
+	ScanUnderCrossHair(HitResult);
+	ServerFire(HitResult.ImpactPoint);
 }
 
 void UCharacterCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
@@ -393,7 +509,7 @@ void UCharacterCombatComponent::ServerFire_Implementation(const FVector_NetQuant
 
 void UCharacterCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
-	if(EquippedWeapon)
+	if (EquippedWeapon)
 	{
 		PlayFireRifleMontage(true);
 		EquippedWeapon->Fire(TraceHitTarget);
@@ -403,36 +519,65 @@ void UCharacterCombatComponent::MulticastFire_Implementation(const FVector_NetQu
 
 void UCharacterCombatComponent::PlayFireRifleMontage(bool bAiming)
 {
-	if(EquippedWeapon == nullptr && Character != nullptr) return;
+	if (EquippedWeapon == nullptr && Character != nullptr) return;
 
 	UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance();
-	if(AnimInstance && FireRifleMontage)
+	if (AnimInstance && FireRifleMontage)
 	{
 		AnimInstance->Montage_Play(FireRifleMontage);
 	}
 }
+
+void UCharacterCombatComponent::PlayHitReactMontage(const EDirection& Direction)
+{
+	if (EquippedWeapon == nullptr) return;
+
+	UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance();
+
+	if (AnimInstance == nullptr || HitReactMontage == nullptr) return;
+
+	AnimInstance->Montage_Play(HitReactMontage);
+	AnimInstance->Montage_JumpToSection(DirectionNameForMontageMap[Direction]);
+}
+
+void UCharacterCombatComponent::PlayDeathReactMontage(const EDirection& Direction)
+{
+	UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance();
+
+	if (AnimInstance == nullptr || HitReactMontage == nullptr) return;
+
+	AnimInstance->Montage_Play(DeathReactMontage);
+	AnimInstance->Montage_JumpToSection(DirectionNameForMontageMap[Direction]);
+}
+
+void UCharacterCombatComponent::OnDeathEnd()
+{
+	UE_LOG(LogTemp, Warning, TEXT("DEATH REGISTERED."));
+}
+
+
 
 #pragma endregion
 
 void UCharacterCombatComponent::ScanUnderCrossHair(FHitResult& TraceHitResult)
 {
 	FVector2d ViewportSize;
-	if(GEngine && GEngine->GameViewport)
+	if (GEngine && GEngine->GameViewport)
 	{
 		GEngine->GameViewport->GetViewportSize(ViewportSize);
 	}
 
 	FVector2D CrossHairLoc(ViewportSize.X * 0.5f, ViewportSize.Y * 0.5f);
 	FVector CrossHairWorldPos, CrossHairWorldDir;
-	
+
 	auto bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(
 		UGameplayStatics::GetPlayerController(this, 0),
 		CrossHairLoc,
 		CrossHairWorldPos,
 		CrossHairWorldDir
-		);
+	);
 
-	if(bScreenToWorld)
+	if (bScreenToWorld)
 	{
 		// We need to move the Start to the fron fo the character instead of in front of the camera, to make sure we are not tracing things betweeen character and camera.
 
@@ -448,14 +593,17 @@ void UCharacterCombatComponent::ScanUnderCrossHair(FHitResult& TraceHitResult)
 
 		FVector End = Start + CrossHairWorldDir * TRACE_LENGTH;
 
-		GetWorld()->LineTraceSingleByChannel(TraceHitResult, Start, End, ECC_Visibility);
+		FCollisionResponseParams ResponseParams;
+		//ResponseParams.CollisionResponse.
+
+		GetWorld()->LineTraceSingleByChannel(TraceHitResult, Start, End, ECC_Visibility, FCollisionQueryParams::DefaultQueryParam, ResponseParams);
 
 		HUDPackage.CrosshairColor = FLinearColor::White;
-		if(!TraceHitResult.bBlockingHit)
+		if (!TraceHitResult.bBlockingHit)
 		{
 			TraceHitResult.ImpactPoint = End;
 		}
-		else if(auto actorHit = TraceHitResult.GetActor())
+		else if (auto actorHit = TraceHitResult.GetActor())
 		{
 			HUDPackage.CrosshairColor = actorHit->Implements<UCrosshairInteractable>() ? FLinearColor::Red : FLinearColor::White;
 		}

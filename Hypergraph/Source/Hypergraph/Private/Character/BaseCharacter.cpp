@@ -13,7 +13,11 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "Hypergraph.h"
 #include "Weapon/BaseWeapon.h"
+#include "GameEnums.h"
+#include "GameMode/ShooterGameMode.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -30,21 +34,23 @@ ABaseCharacter::ABaseCharacter()
 	FollowCamera->bUsePawnControlRotation = false;
 
 	bUseControllerRotationYaw = false;
-	if(UCharacterMovementComponent* CharacterMvmnt = GetCharacterMovement())
+	if (UCharacterMovementComponent* CharacterMvmnt = GetCharacterMovement())
 	{
 		CharacterMvmnt->bOrientRotationToMovement = true;
 		CharacterMvmnt->NavAgentProps.bCanCrouch = true;
 	}
-	
+
 	OverheadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("Overhead Display"));
 	OverheadWidget->SetupAttachment(RootComponent);
-	
+
 	CombatComponent = CreateDefaultSubobject<UCharacterCombatComponent>(TEXT("Combat Component"));
 	CombatComponent->SetIsReplicated(true);
+
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
-	GetCharacterMovement()->RotationRate = FRotator(0.f,0.f, 850.f);
+	GetMesh()->SetCollisionObjectType(ECC_SkeletalMesh);
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 850.f);
 
 	NetUpdateFrequency = 66;
 	MinNetUpdateFrequency = 33;
@@ -56,14 +62,25 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABaseCharacter, OverlappingWeapon, COND_OwnerOnly);
+	DOREPLIFETIME(ABaseCharacter, Health);
 }
 
 void ABaseCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-	if(CombatComponent)
+	if (CombatComponent)
 	{
 		CombatComponent->Character = this;
+	}
+
+	for (const auto Component : GetComponents())
+	{
+		if (!Component->GetClass()->ImplementsInterface(UCharacterComponent::StaticClass())) continue;
+
+		if (ICharacterComponent* CharComponent = Cast<ICharacterComponent>(Component))
+		{
+			CharacterComponents.Add(CharComponent);
+		}
 	}
 }
 
@@ -79,7 +96,15 @@ void ABaseCharacter::BeginPlay()
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
 		}
 	}
+
+	UpdateHUDHealth();
+
+	if (HasAuthority())
+	{
+		OnTakeAnyDamage.AddDynamic(this, &ThisClass::ReceiveDamage);
+	}
 }
+
 
 void ABaseCharacter::Tick(float DeltaTime)
 {
@@ -87,6 +112,22 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 	HideCameraIfCameraClose();
 }
+
+#pragma endregion
+
+void ABaseCharacter::Elim()
+{
+	bKilled = true;
+}
+
+#pragma region Interfaces
+
+
+const ESurfaceType ABaseCharacter::GetSurfaceType_Implementation()
+{
+	return ESurfaceType::Flesh;
+}
+
 #pragma endregion
 
 #pragma region Custom Character Movement
@@ -153,7 +194,7 @@ void ABaseCharacter::LookActionCallback(const FInputActionValue& Value)
 
 void ABaseCharacter::Jump()
 {
-	if(bIsCrouched)
+	if (bIsCrouched)
 	{
 		UnCrouch();
 	}
@@ -163,22 +204,32 @@ void ABaseCharacter::Jump()
 	}
 }
 
+void ABaseCharacter::OnRep_ReplicatedMovement()
+{
+	Super::OnRep_ReplicatedMovement();
+
+	for (auto& component : CharacterComponents)
+	{
+		component->Execute_OnRep_ReplicatedMovement(component->_getUObject());
+	}
+}
+
 #pragma endregion 
 
 #pragma region Weapon Detection
 
 void ABaseCharacter::SetOverlappingWeapon(ABaseWeapon* Weapon)
 {
-	if(OverlappingWeapon)
+	if (OverlappingWeapon)
 	{
 		OverlappingWeapon->ShowPickupWidget(false);
 	}
-	
+
 	OverlappingWeapon = Weapon;
 
-	if(IsLocallyControlled())
+	if (IsLocallyControlled())
 	{
-		if(OverlappingWeapon)
+		if (OverlappingWeapon)
 		{
 			OverlappingWeapon->ShowPickupWidget(true);
 		}
@@ -187,11 +238,11 @@ void ABaseCharacter::SetOverlappingWeapon(ABaseWeapon* Weapon)
 
 void ABaseCharacter::OnRep_OverlappingWeapon(ABaseWeapon* LastWeapon)
 {
-	if(OverlappingWeapon)
+	if (OverlappingWeapon)
 	{
 		OverlappingWeapon->ShowPickupWidget(true);
 	}
-	else if(LastWeapon)
+	else if (LastWeapon)
 	{
 		LastWeapon->ShowPickupWidget(false);
 	}
@@ -213,6 +264,147 @@ void ABaseCharacter::HideCameraIfCameraClose()
 	}
 }
 
+void ABaseCharacter::ReceiveDamage_Implementation(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	// This is only being executed on the Server
+
+	if (CombatComponent)
+	{
+		// Notify Hit Actors of impact.
+		if (DamagedActor->Implements<UProjectileTarget>())
+		{
+			TScriptInterface<IProjectileTarget> target;
+			target.SetObject(DamagedActor);
+
+
+			ESurfaceType HitSurface = target->Execute_GetSurfaceType(DamagedActor);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Projectile hit an unknown surface type."));
+		}
+
+		// Health is updated, now we execute the Animations for character hit.
+		FVector StartLocation = DamageCauser->GetActorLocation();
+		FVector EndLocation = DamagedActor->GetActorLocation();
+
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(DamageCauser);
+
+		FHitResult HitResult;
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams))
+		{
+			FVector ImpactNormal = HitResult.ImpactNormal;
+
+			FTransform Transform = DamagedActor->GetActorTransform();
+			FVector OtherForward = Transform.GetUnitAxis(EAxis::X);
+			FVector OtherRight = Transform.GetUnitAxis(EAxis::Y);
+
+			float DotForward = FVector::DotProduct(ImpactNormal, OtherForward);
+			float DotRight = FVector::DotProduct(ImpactNormal, OtherRight);
+
+			LastHitDirection =
+				DotForward > 0.7f ? LastHitDirection = EDirection::ED_Forward :
+				DotForward < -0.7f ? LastHitDirection = EDirection::ED_Back :
+				DotRight > 0.7f ? LastHitDirection = EDirection::ED_Right :
+				DotRight < -0.7f ? LastHitDirection = EDirection::ED_Left :
+				EDirection::ED_Forward;
+
+			if (Health <= 0)
+			{
+				if (AShooterGameMode* CurrentGameMode = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode()))
+				{
+					ShooterController = ShooterController == nullptr ? Cast<AShooterController>(GetController()) : ShooterController;
+					AShooterController* AttackerController = Cast<AShooterController>(InstigatedBy);
+					CurrentGameMode->PlayerEliminated(this, ShooterController, AttackerController);
+				}
+			}
+
+			Server_PlayDamageMontage(LastHitDirection, Damage);
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Received Damage: %f"), Damage);
+	Health = FMath::Clamp(Health - Damage, 0.f, MaxHealth);
+
+	UpdateHUDHealth();
+}
+
+#pragma region Ragdoll
+void ABaseCharacter::Server_DeactivatePlayer_Implementation()
+{
+	DeactivatePlayer(); // Server
+	Multicast_DeactivatePlayer(); // Clients
+}
+
+void ABaseCharacter::Multicast_DeactivatePlayer_Implementation()
+{
+	DeactivatePlayer();
+}
+
+void ABaseCharacter::DeactivatePlayer()
+{
+	if (auto MeshComp = GetMesh())
+	{
+		MeshComp->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+		MeshComp->SetAllBodiesSimulatePhysics(true);
+		MeshComp->SetSimulatePhysics(true);
+		MeshComp->WakeAllRigidBodies();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Null Mesh on this Character?"));
+	}
+}
+#pragma endregion
+// It's important that we pass along the damage because the HitDirection and Health are not replicated at the same time.
+void ABaseCharacter::Server_PlayDamageMontage_Implementation(const EDirection& HitDirection, const float& Damage)
+{
+	Multicast_PlayDamageMontage(HitDirection, Damage);
+}
+
+void ABaseCharacter::Multicast_PlayDamageMontage_Implementation(const EDirection& HitDirection, const float& Damage)
+{
+	if ((Health - Damage) <= 0)
+	{
+		CombatComponent->PlayDeathReactMontage(HitDirection);
+
+	}
+	else
+	{
+		CombatComponent->PlayHitReactMontage(HitDirection);
+	}
+}
+
+
+void ABaseCharacter::OnRep_Health()
+{
+	UpdateHUDHealth();
+
+	if (Health <= 0)
+	{
+		// Character died. We want to disable Pawn's inputs while they're in a death animation.
+		APlayerController* LocalPlayerController = Cast<APlayerController>(GetOwner());
+
+		if (LocalPlayerController && LocalPlayerController->IsLocalController())
+		{
+			if (auto Pawn = LocalPlayerController->GetPawn())
+			{
+				Pawn->DisableInput(LocalPlayerController);
+			}
+		}
+	}
+}
+
+void ABaseCharacter::UpdateHUDHealth()
+{
+	ShooterController = ShooterController == nullptr ? Cast<AShooterController>(Controller) : ShooterController;
+	if (ShooterController)
+	{
+		ShooterController->SetHUDHealth(Health, MaxHealth);
+	}
+}
+
 void ABaseCharacter::DebugHitScan()
 {
 	bHitScanDebugEnabled = !bHitScanDebugEnabled;
@@ -227,26 +419,21 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	if (const auto EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this,
-		                                   &ThisClass::JumpStartActionCallback);
+			&ThisClass::JumpStartActionCallback);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this,
-		                                   &ThisClass::JumpEndActionCallback);
-		
+			&ThisClass::JumpEndActionCallback);
+
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this,
-		                                   &ThisClass::CrouchStartActionCallback);
+			&ThisClass::CrouchStartActionCallback);
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this,
-		                                   &ThisClass::CrouchEndActionCallback);
-		
+			&ThisClass::CrouchEndActionCallback);
+
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::MoveActionCallback);
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::LookActionCallback);
 
-		for (const auto Component : GetComponents())
+		for (auto& component : CharacterComponents)
 		{
-			if(!Component->GetClass()->ImplementsInterface(UCharacterComponent::StaticClass())) continue;
-			
-			if(const ICharacterComponent* CharComponent = Cast<ICharacterComponent>(Component))
-			{
-				CharComponent->Execute_SetupInputs(Component, EnhancedInputComponent);
-			}
+			component->Execute_SetupInputs(component->_getUObject(), EnhancedInputComponent);
 		}
 	}
 }

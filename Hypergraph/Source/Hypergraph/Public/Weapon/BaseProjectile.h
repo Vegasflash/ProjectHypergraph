@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Sound/SoundCue.h"
+#include "DataAssets/ProjectileDataAsset.h"
 #include "BaseProjectile.generated.h"
 
 UCLASS()
@@ -21,12 +22,9 @@ protected:
 
 	virtual void Destroyed() override;
 
-	UPROPERTY(EditAnywhere)
-	UParticleSystem* ImpactParticles;
 
-	UPROPERTY(EditAnywhere)
-	USoundCue* ImpactSound;
-
+	UPROPERTY(EditAnywhere, Category = "Data")
+	UProjectileDataAsset* ProjectileData;
 
 public:
 	virtual void Tick(float DeltaTime) override;

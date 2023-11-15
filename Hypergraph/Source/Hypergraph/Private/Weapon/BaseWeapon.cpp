@@ -6,12 +6,13 @@
 #include "Character/BaseCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
 ABaseWeapon::ABaseWeapon() :
 	RecoilIntensity(1.0f)
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 	//SetReplicates(true);
 	bReplicates = true;
 	
@@ -43,6 +44,8 @@ void ABaseWeapon::BeginPlay()
 void ABaseWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	RotatePickupWidgetTowardsPlayerCam();
 }
 
 void ABaseWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -94,6 +97,25 @@ void ABaseWeapon::OnPawnOverlapEnd(UPrimitiveComponent* OverlappedComponent,
 	if (BaseCharacter && PickupPromptWidget)
 	{
 		BaseCharacter->SetOverlappingWeapon(nullptr);
+	}
+}
+
+void ABaseWeapon::RotatePickupWidgetTowardsPlayerCam()
+{
+	if (PickupPromptWidget != nullptr && PickupPromptWidget->IsVisible())
+	{
+		if (APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			FVector CameraLocation;
+			FRotator CameraRotation;
+			PlayerController->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+			// Calculate the rotation needed to face the camera
+			FRotator WidgetRotation = FRotationMatrix::MakeFromX(CameraLocation - GetActorLocation()).Rotator();
+
+			// Set the widget component's rotation
+			PickupPromptWidget->SetWorldRotation(WidgetRotation);
+		}
 	}
 }
 

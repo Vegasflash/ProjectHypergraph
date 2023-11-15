@@ -69,12 +69,17 @@ private:
 	UPROPERTY(EditAnywhere, Category="Crosshair", meta = (ClampMin = "1.0", ClampMax = "5.0", UIMin = "0", UIMax = "5.0"))
 	float RecoilIntensity;
 
+	void RotatePickupWidgetTowardsPlayerCam();
+
 public:
 	void SetWeaponState(EWeaponState State);
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
+
+	//Crosshair
 	FORCEINLINE float GetRecoilIntensity() const { return RecoilIntensity; }
-	FORCEINLINE const float GetZoomedFoV() const { return WeaponData != nullptr ? WeaponData->GetZoomedFoV() : UWeaponDataAsset::DEFAULT_ZOOMED_FOV; }
-	FORCEINLINE const float GetZoomInterpSpeed() const { return WeaponData != nullptr ? WeaponData->GetZoomInterpSpeed() : UWeaponDataAsset::DEFAULT_ZOOM_INTERP_SPEED; }
 	FORCEINLINE const TMap<ECrosshairPosition, UTexture2D*> GetCrosshairTextures() const { return CrosshairTextures; }
+
+	// Weapon Data
+	const UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
 };

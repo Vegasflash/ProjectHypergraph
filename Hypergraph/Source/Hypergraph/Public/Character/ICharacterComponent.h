@@ -22,9 +22,12 @@ class HYPERGRAPH_API ICharacterComponent
 
 public:
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category= Input)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Input)
 	void SetupInputs(UEnhancedInputComponent* PlayerInputComponent);
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category= Input)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Input)
 	void DisableInputs(UEnhancedInputComponent* PlayerInputComponent);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Replication)
+	void OnRep_ReplicatedMovement();
 };

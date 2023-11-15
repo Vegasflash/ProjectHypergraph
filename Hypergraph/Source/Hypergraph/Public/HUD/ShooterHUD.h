@@ -28,6 +28,11 @@ class HYPERGRAPH_API AShooterHUD : public AHUD
 	GENERATED_BODY()
 
 	virtual void DrawHUD() override;
+
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	TSubclassOf<UUserWidget> CharacterOverlayClass;
+
+	class UCharacterOverlay* CharacterOverlay;
 	
 private:
 	FHUDPackage HUDPackage;
@@ -37,6 +42,10 @@ private:
 	UPROPERTY(EditAnywhere, Category="Crosshair")
 	float CrosshairSpreadMax = 16.f;
 
+	virtual void BeginPlay() override;
+	void AddCharacterOverlay();
+
 public:
 	FORCEINLINE void SetHUDPackage(const FHUDPackage& Package) { HUDPackage = Package; }
+	FORCEINLINE UCharacterOverlay* GetCharacterOverlay() const { return CharacterOverlay; }
 };

@@ -24,6 +24,8 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
 	if (BaseCharacter == nullptr) return;
 
+	bKilled = BaseCharacter->IsKilled();
+
 	FVector Velocity = BaseCharacter->GetVelocity();
 	Velocity.Z = 0.f;
 	Speed = Velocity.Size();
@@ -36,6 +38,7 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	bIsCrouched = BaseCharacter->bIsCrouched;
 	bIsAiming = BaseCharacter->IsAiming();
 	TurningInPlace = BaseCharacter->GetTurningInPlace();
+	bRotateRootBone = BaseCharacter->ShouldRotateRootBone();
 
 	const FRotator AimRotation = BaseCharacter->GetBaseAimRotation();
 	const FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(BaseCharacter->GetVelocity());
@@ -78,7 +81,11 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 				if (bLocallyControlled)
 				{
 					const auto RightHandTransform = WeaponMesh->GetSocketTransform(FName("hand_r"), RTS_World);
-					FRotator WeaponLookAtDir = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(), RightHandTransform.GetLocation() + (RightHandTransform.GetLocation() - CrosshairImpactPoint));
+
+					FRotator WeaponLookAtDir = UKismetMathLibrary::FindLookAtRotation(
+						RightHandTransform.GetLocation(),
+						RightHandTransform.GetLocation() + (RightHandTransform.GetLocation() - CrosshairImpactPoint));
+
 					RightHandRotation = FMath::RInterpTo(RightHandRotation, WeaponLookAtDir, DeltaTime, 15.f);
 
 					const auto MuzzleTipTransform = WeaponMesh->GetSocketTransform(FName(("MuzzleFlash")));
