@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Camera/CameraComponent.h"
 #include "GameEnums.h"
+#include "Hypergraph.h"
 
 UCharacterCombatComponent::UCharacterCombatComponent() :
 	MaxCrosshairInAirSpread(2.25f),
@@ -85,6 +86,9 @@ void UCharacterCombatComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		{
 			ShotIntervalCooldown -= DeltaTime;
 		}
+
+		FHitResult HitResult;
+		ScanUnderCrossHair(HitResult);
 
 		if (bIsFiring && EquippedWeapon != nullptr && CurrentFiringMode > EFiringMode::EFM_Single)
 		{
@@ -499,6 +503,9 @@ void UCharacterCombatComponent::ProcessFiring()
 
 	FHitResult HitResult;
 	ScanUnderCrossHair(HitResult);
+	//TODO - Remove me
+	DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 5.f, 12, FColor::Blue, false, 1.0f);
+
 	ServerFire(HitResult.ImpactPoint);
 }
 
@@ -586,17 +593,15 @@ void UCharacterCombatComponent::ScanUnderCrossHair(FHitResult& TraceHitResult)
 		FVector Offset = CrossHairWorldDir * (DistanceToCharacter + 100.f);
 		FVector Start = CrossHairWorldPos + Offset;
 
-		if (Character->DebugHitScanEnabled())
-		{
-			DrawDebugSphere(GetWorld(), Start, 16.f, 12, FColor::Red, false);
-		}
-
 		FVector End = Start + CrossHairWorldDir * TRACE_LENGTH;
 
-		FCollisionResponseParams ResponseParams;
-		//ResponseParams.CollisionResponse.
 
-		GetWorld()->LineTraceSingleByChannel(TraceHitResult, Start, End, ECC_Visibility, FCollisionQueryParams::DefaultQueryParam, ResponseParams);
+		FCollisionResponseParams ResponseParams;
+		FCollisionQueryParams TraceParams(FName(TEXT("MyTraceTag")), false, GetOwner());
+		TraceParams.IgnoreMask = ECC_OverlapVolume;
+
+		GetWorld()->LineTraceSingleByChannel(TraceHitResult, Start, End, ECollisionChannel::ECC_Visibility, TraceParams, ResponseParams);
+
 
 		HUDPackage.CrosshairColor = FLinearColor::White;
 		if (!TraceHitResult.bBlockingHit)
@@ -606,6 +611,11 @@ void UCharacterCombatComponent::ScanUnderCrossHair(FHitResult& TraceHitResult)
 		else if (auto actorHit = TraceHitResult.GetActor())
 		{
 			HUDPackage.CrosshairColor = actorHit->Implements<UCrosshairInteractable>() ? FLinearColor::Red : FLinearColor::White;
+		}
+
+		if (Character->DebugHitScanEnabled())
+		{
+			DrawDebugSphere(GetWorld(), TraceHitResult.ImpactPoint, 16.f, 12, FColor::Red, false);
 		}
 	}
 }

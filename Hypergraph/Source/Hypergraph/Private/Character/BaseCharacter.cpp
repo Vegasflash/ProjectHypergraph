@@ -18,6 +18,7 @@
 #include "GameEnums.h"
 #include "GameMode/ShooterGameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -117,7 +118,37 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 void ABaseCharacter::Elim()
 {
+	Multicast_Elim();
+	GetWorld()->GetTimerManager().SetTimer(
+		ElimTimer,
+		this,
+		&ThisClass::ElimTimerFinished,
+		ElimDelay);
+}
+
+void ABaseCharacter::ElimTimerFinished()
+{
+	if (AShooterGameMode* GameMode = GetWorld()->GetAuthGameMode<AShooterGameMode>())
+	{
+		GameMode->RequestRespawn(this, Controller);
+	}
+}
+
+void ABaseCharacter::Multicast_Elim_Implementation()
+{
 	bKilled = true;
+
+	// Character died. We want to disable Pawn's inputs while they're in a death animation.
+	APlayerController* LocalPlayerController = Cast<APlayerController>(GetOwner());
+
+	if (LocalPlayerController && LocalPlayerController->IsLocalController())
+	{
+		if (auto Pawn = LocalPlayerController->GetPawn())
+		{
+			Pawn->DisableInput(LocalPlayerController);
+		}
+	}
+
 }
 
 #pragma region Interfaces
@@ -268,6 +299,8 @@ void ABaseCharacter::ReceiveDamage_Implementation(AActor* DamagedActor, float Da
 {
 	// This is only being executed on the Server
 
+	float HealthPreview = FMath::Clamp(Health - Damage, 0.f, MaxHealth);
+
 	if (CombatComponent)
 	{
 		// Notify Hit Actors of impact.
@@ -310,7 +343,7 @@ void ABaseCharacter::ReceiveDamage_Implementation(AActor* DamagedActor, float Da
 				DotRight < -0.7f ? LastHitDirection = EDirection::ED_Left :
 				EDirection::ED_Forward;
 
-			if (Health <= 0)
+			if (HealthPreview <= 0)
 			{
 				if (AShooterGameMode* CurrentGameMode = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode()))
 				{
@@ -324,25 +357,24 @@ void ABaseCharacter::ReceiveDamage_Implementation(AActor* DamagedActor, float Da
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Received Damage: %f"), Damage);
-	Health = FMath::Clamp(Health - Damage, 0.f, MaxHealth);
+	Health = FMath::Clamp(HealthPreview, 0.f, MaxHealth);
 
 	UpdateHUDHealth();
 }
 
 #pragma region Ragdoll
-void ABaseCharacter::Server_DeactivatePlayer_Implementation()
+void ABaseCharacter::Server_DoPlayerDeathSequence_Implementation()
 {
-	DeactivatePlayer(); // Server
-	Multicast_DeactivatePlayer(); // Clients
+	DoPlayerDeathSequence(); // Server
+	Multicast_DoPlayerDeathSequence(); // Clients
 }
 
-void ABaseCharacter::Multicast_DeactivatePlayer_Implementation()
+void ABaseCharacter::Multicast_DoPlayerDeathSequence_Implementation()
 {
-	DeactivatePlayer();
+	DoPlayerDeathSequence();
 }
 
-void ABaseCharacter::DeactivatePlayer()
+void ABaseCharacter::DoPlayerDeathSequence()
 {
 	if (auto MeshComp = GetMesh())
 	{
@@ -380,20 +412,6 @@ void ABaseCharacter::Multicast_PlayDamageMontage_Implementation(const EDirection
 void ABaseCharacter::OnRep_Health()
 {
 	UpdateHUDHealth();
-
-	if (Health <= 0)
-	{
-		// Character died. We want to disable Pawn's inputs while they're in a death animation.
-		APlayerController* LocalPlayerController = Cast<APlayerController>(GetOwner());
-
-		if (LocalPlayerController && LocalPlayerController->IsLocalController())
-		{
-			if (auto Pawn = LocalPlayerController->GetPawn())
-			{
-				Pawn->DisableInput(LocalPlayerController);
-			}
-		}
-	}
 }
 
 void ABaseCharacter::UpdateHUDHealth()

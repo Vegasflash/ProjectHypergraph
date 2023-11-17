@@ -13,12 +13,14 @@ class AShooterSpawnPoint;
 /**
  * 
  */
-UCLASS(Blueprintable)
+UCLASS()
 class HYPERGRAPH_API AShooterGameMode : public AGameMode
 {
 	GENERATED_BODY()
 
 private:
+	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = true))
+	AShooterSpawnPoint* DefaultSpawnPoint;
 	UPROPERTY(VisibleAnywhere)
 	TArray<AShooterSpawnPoint*> SpawnPoints;
 	

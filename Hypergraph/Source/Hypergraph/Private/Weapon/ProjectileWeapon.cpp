@@ -19,13 +19,23 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 
 	if (auto MuzzleSocket = GetWeaponMesh()->GetSocketByName(FName("MuzzleFlash")))
 	{
-		auto MuzzleSocketT = MuzzleSocket->GetSocketTransform(GetWeaponMesh());
-		// From muzzle flash soocket to hit location in params.
-		FVector ToTarget = HitTarget - MuzzleSocketT.GetLocation();
-		FRotator TargetRotation = ToTarget.Rotation();
+		//auto MuzzleSocketT = MuzzleSocket->GetSocketTransform(GetWeaponMesh());
+		//// From muzzle flash socket to hit location in params.
+		//FVector ToTarget = HitTarget - MuzzleSocketT.GetLocation();
+		//FRotator TargetRotation = ToTarget.Rotation();
+
+		FVector MuzzleLocation;
+		FRotator MuzzleRotation;
+		FTransform MuzzleTransform = MuzzleSocket->GetSocketTransform(GetWeaponMesh());
+
+		// Calculate rotation to hit location
+		FTransform TargetTransform = FTransform::Identity;
+		TargetTransform.SetLocation(HitTarget);
+		FRotator TargetRotation = FRotationMatrix::MakeFromX(TargetTransform.GetLocation() - MuzzleTransform.GetLocation()).Rotator();
+
 		if (UWorld* World = GetWorld())
 		{
-			auto Projectile = World->SpawnActor<ABaseProjectile>(ProjectileClass, MuzzleSocketT.GetLocation(), TargetRotation,
+			auto Projectile = World->SpawnActor<ABaseProjectile>(ProjectileClass, MuzzleTransform.GetLocation(), TargetRotation,
 			                                    SpawnParams);
 		}
 	}

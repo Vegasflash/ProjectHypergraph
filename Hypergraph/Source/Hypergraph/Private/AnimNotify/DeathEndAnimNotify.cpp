@@ -12,7 +12,7 @@ void UDeathEndAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequence
 		if (MeshComp->GetOwnerRole() >= ENetRole::ROLE_Authority)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Server Heard Death"));
-			Character->Server_DeactivatePlayer();
+			Character->Server_DoPlayerDeathSequence();
 		}
 	}
 }

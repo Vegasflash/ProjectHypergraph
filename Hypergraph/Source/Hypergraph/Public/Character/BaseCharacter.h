@@ -14,7 +14,6 @@
 #include "ActorComponent/DamageProcessingComponent.h"
 #include "BaseCharacter.generated.h"
 
-
 UCLASS()
 class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInteractable, public IProjectileTarget, public IDamageable
 {
@@ -28,7 +27,10 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
+
 	void Elim();
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_Elim();
 
 	// IProjectileTarget Inteface overrides
 	virtual const ESurfaceType GetSurfaceType_Implementation() override;
@@ -37,10 +39,10 @@ public:
 	virtual void ReceiveDamage_Implementation(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser) override;
 
 	UFUNCTION(Server, Reliable)
-	void Server_DeactivatePlayer();
+	void Server_DoPlayerDeathSequence();
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_DeactivatePlayer();
-	void DeactivatePlayer();
+	void Multicast_DoPlayerDeathSequence();
+	void DoPlayerDeathSequence();
 
 protected:
 	// Called when the game starts or when spawned
@@ -125,6 +127,13 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayDamageMontage(const EDirection& HitDirection, const float& Damage);
 	//
+
+	FTimerHandle ElimTimer;
+
+	UPROPERTY(EditDefaultsOnly)
+	float ElimDelay = 3.f;
+
+	void ElimTimerFinished();
 
 	/*DEBUG*/
 	UFUNCTION(Exec, Category = "Commands")

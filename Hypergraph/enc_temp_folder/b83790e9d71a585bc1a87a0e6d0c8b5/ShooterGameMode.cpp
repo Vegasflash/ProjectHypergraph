@@ -47,7 +47,14 @@ AShooterSpawnPoint* AShooterGameMode::GetRandomSpawnPoint() const
 
 	if (spawnPointsCount <= 0)
 	{
-		return Cast<AShooterSpawnPoint>(UGameplayStatics::GetActorOfClass(GetWorld(), AShooterSpawnPoint::StaticClass()));
+		if (DefaultSpawnPoint == nullptr)
+		{
+			return Cast<AShooterSpawnPoint>(UGameplayStatics::GetActorOfClass(GetWorld(), AShooterSpawnPoint::StaticClass()));
+		}
+		else
+		{
+			return DefaultSpawnPoint;
+		}
 	}
 
 	int32 idx = FMath::RandRange(0, SpawnPoints.Num() - 1);
