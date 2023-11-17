@@ -53,8 +53,12 @@ ABaseCharacter::ABaseCharacter()
 	GetMesh()->SetCollisionObjectType(ECC_SkeletalMesh);
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 850.f);
 
+	SpawnCollisionHandlingMethod = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
 	NetUpdateFrequency = 66;
 	MinNetUpdateFrequency = 33;
+
+	DissolveTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("DissolveTimelineComponent"));
 }
 
 #pragma region Character Defaults
@@ -385,8 +389,23 @@ void ABaseCharacter::DoPlayerDeathSequence()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Null Mesh on this Character?"));
+		UE_LOG(LogTemp, Warning, TEXT("Null Mesh on this Character."));
 	}
+
+	if (DissolveMaterialInstance)
+	{
+		DynamicDissolveMaterialInstance = UMaterialInstanceDynamic::Create(DissolveMaterialInstance, this);
+		GetMesh()->SetMaterial(0, DynamicDissolveMaterialInstance);
+		GetMesh()->SetMaterial(1, DynamicDissolveMaterialInstance);
+		DynamicDissolveMaterialInstance->SetScalarParameterValue(DISSOLVE_PARAM_NAME, MAX_DISSOLVE_PARAM);
+		DynamicDissolveMaterialInstance->SetScalarParameterValue(GLOW_INT_PARAM_NAME, 200.f);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Null Dissolve Mat Instance on this Character."));
+	}
+
+	StartDissolve();
 }
 #pragma endregion
 // It's important that we pass along the damage because the HitDirection and Health are not replicated at the same time.
@@ -422,6 +441,27 @@ void ABaseCharacter::UpdateHUDHealth()
 		ShooterController->SetHUDHealth(Health, MaxHealth);
 	}
 }
+
+#pragma region Dissolve
+void ABaseCharacter::OnDissolveTimelineTick(float DissolveValue)
+{
+	if (DynamicDissolveMaterialInstance)
+	{
+		DynamicDissolveMaterialInstance->SetScalarParameterValue(DISSOLVE_PARAM_NAME, DissolveValue);
+	}
+}
+
+void ABaseCharacter::StartDissolve()
+{
+	DissolveTrack.BindDynamic(this, &ThisClass::OnDissolveTimelineTick);
+	
+	if (DissolveCurve && DissolveTimeline)
+	{
+		DissolveTimeline->AddInterpFloat(DissolveCurve, DissolveTrack);
+		DissolveTimeline->Play();
+	}
+}
+#pragma endregion
 
 void ABaseCharacter::DebugHitScan()
 {

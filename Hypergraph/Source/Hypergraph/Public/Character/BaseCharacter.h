@@ -12,12 +12,20 @@
 #include "Interfaces/Damageable.h"
 #include "Controller/ShooterController.h"
 #include "ActorComponent/DamageProcessingComponent.h"
+#include "Components/TimelineComponent.h"
+
 #include "BaseCharacter.generated.h"
+
+static const FName DISSOLVE_PARAM_NAME = TEXT("Dissolve");
+static const FName GLOW_INT_PARAM_NAME = TEXT("GlowIntensity");
 
 UCLASS()
 class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInteractable, public IProjectileTarget, public IDamageable
 {
 	GENERATED_BODY()
+
+	const float MAX_DISSOLVE_PARAM = 0.55f;
+	const float MIN_DISSOLVE_PARAM = -0.25f;
 
 public:
 
@@ -117,6 +125,25 @@ private:
 	UFUNCTION()
 	void OnRep_Health();
 	void UpdateHUDHealth();
+	//
+
+	/* Dissolve Effect*/
+	UPROPERTY(VisibleAnywhere, Category = "Elim")
+	UTimelineComponent* DissolveTimeline;
+	UPROPERTY(EditAnywhere, Category = "Elim")
+	UCurveFloat* DissolveCurve;
+
+	FOnTimelineFloat DissolveTrack;
+
+	UFUNCTION()
+	void OnDissolveTimelineTick(float DissolveValue);
+	void StartDissolve();
+
+	// 
+	UPROPERTY(EditAnywhere, Category = "Elim")
+	UMaterialInstance* DissolveMaterialInstance; // instance assigned to blueprint.
+	UPROPERTY(VisibleAnywhere, Category="Elim")
+	UMaterialInstanceDynamic* DynamicDissolveMaterialInstance; // Runtime Instance
 	//
 
 	/* Hit Direction.*/
