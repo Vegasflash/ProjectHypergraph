@@ -6,6 +6,7 @@
 #include "GameFramework/GameMode.h"
 #include "Character/BaseCharacter.h"
 #include "Controller/ShooterController.h"
+#include "PlayerState/ShooterPlayerState.h"
 #include "ShooterGameMode.generated.h"
 
 class AShooterSpawnPoint;
@@ -21,7 +22,8 @@ class HYPERGRAPH_API AShooterGameMode : public AGameMode
 private:
 	UPROPERTY(VisibleAnywhere)
 	TArray<AShooterSpawnPoint*> SpawnPoints;
-	
+	TObjectPtr<AShooterPlayerState> AttackPlayerState;
+
 public:
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 

@@ -179,6 +179,8 @@ public:
 	FORCEINLINE UCameraComponent* GetCamera() const { return FollowCamera; }
 	FORCEINLINE const bool ShouldRotateRootBone() const { return CombatComponent ? CombatComponent->ShouldRotateRootBone() : false; }
 	FORCEINLINE bool IsKilled() const { return bKilled; }
+	FORCEINLINE float GetHealth() const { return Health; }
+	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 
 	/*DEBUG*/
 	FORCEINLINE const bool DebugHitScanEnabled() const { return bHitScanDebugEnabled; }

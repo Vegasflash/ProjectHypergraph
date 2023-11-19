@@ -152,7 +152,6 @@ void ABaseCharacter::Multicast_Elim_Implementation()
 			Pawn->DisableInput(LocalPlayerController);
 		}
 	}
-
 }
 
 #pragma region Interfaces
@@ -380,6 +379,16 @@ void ABaseCharacter::Multicast_DoPlayerDeathSequence_Implementation()
 
 void ABaseCharacter::DoPlayerDeathSequence()
 {
+	if (CombatComponent && CombatComponent->EquippedWeapon)
+	{
+		CombatComponent->EquippedWeapon->Dropped();
+	}
+
+	if (auto Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
 	if (auto MeshComp = GetMesh())
 	{
 		MeshComp->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);

@@ -15,6 +15,8 @@ class HYPERGRAPH_API AShooterController : public APlayerController
 	GENERATED_BODY()
 public:
 	void SetHUDHealth(float Health, float MaxHealth);
+	void SetHUDKills(float Kills);
+	virtual void OnPossess(APawn* aPawn) override;
 
 protected:
 	virtual void BeginPlay() override;

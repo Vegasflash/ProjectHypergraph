@@ -147,10 +147,33 @@ void UCharacterCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip)
 {
 	if (!ValidateCharacterRef() || WeaponToEquip == nullptr) return;
 
-	const FName SocketName = FName("Weapon_Socket_R");
 	EquippedWeapon = WeaponToEquip;
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
 
+	ProcessWeaponEquip();
+
+	EquippedWeapon->SetOwner(Character);
+	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
+	Character->bUseControllerRotationYaw = true;
+	SetFiringMode(EquippedWeapon->GetWeaponData()->GetDefaultFiringMode());
+}
+
+void UCharacterCombatComponent::OnRep_EquippedWeapon()
+{
+	if (EquippedWeapon && Character)
+	{
+		EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+
+		ProcessWeaponEquip();
+
+		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
+		Character->bUseControllerRotationYaw = true;
+	}
+}
+
+void UCharacterCombatComponent::ProcessWeaponEquip()
+{
+	const FName SocketName = TEXT("Weapon_Socket_R");
 	if (const auto WeaponSocket = Character->GetMesh()->GetSocketByName(SocketName))
 	{
 		WeaponSocket->AttachActor(EquippedWeapon, Character->GetMesh());
@@ -164,11 +187,6 @@ void UCharacterCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip)
 					TEXT("Could not find SocketName: %s"), *SocketName.ToString()));
 		}
 	}
-
-	EquippedWeapon->SetOwner(Character);
-	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
-	Character->bUseControllerRotationYaw = true;
-	SetFiringMode(EquippedWeapon->GetWeaponData()->GetDefaultFiringMode());
 }
 
 void UCharacterCombatComponent::Server_EquipButtonPressed_Implementation()
@@ -471,15 +489,6 @@ void UCharacterCombatComponent::SetHUDCrosshairs(float DeltaTime)
 }
 
 #pragma region Shoot Weapon
-void UCharacterCombatComponent::OnRep_EquippedWeapon()
-{
-	if (EquippedWeapon && Character)
-	{
-		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
-		Character->bUseControllerRotationYaw = true;
-	}
-}
-
 void UCharacterCombatComponent::ShootInputPressed() { ShootInputProcess(true); }
 
 void UCharacterCombatComponent::ShootInputReleased() { ShootInputProcess(false); }

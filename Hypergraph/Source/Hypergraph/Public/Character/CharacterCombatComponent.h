@@ -36,6 +36,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void EquipWeapon(ABaseWeapon* WeaponToEquip);
+	void ProcessWeaponEquip();
 
 	void OnRep_ReplicatedMovement_Implementation();
 

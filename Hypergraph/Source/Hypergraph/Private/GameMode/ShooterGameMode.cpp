@@ -18,6 +18,8 @@ void AShooterGameMode::PlayerEliminated(ABaseCharacter* EllimmedCharacter, AShoo
 		UE_LOG(LogTemp, Error, TEXT("Can't identify attacker, Null Pointer."));
 	}
 
+	AttackPlayerState = AttackerController == nullptr ? Cast<AShooterPlayerState>(AttackerController->PlayerState) : AttackPlayerState;
+
 	if (EllimmedCharacter)
 	{
 		EllimmedCharacter->Elim();

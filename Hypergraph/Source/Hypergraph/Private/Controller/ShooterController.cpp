@@ -6,6 +6,7 @@
 #include "HUD//CharacterOverlay.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Character/BaseCharacter.h"
 
 void AShooterController::BeginPlay()
 {
@@ -14,6 +15,15 @@ void AShooterController::BeginPlay()
 	ShooterHUD = Cast<AShooterHUD>(GetHUD());
 }
 
+void AShooterController::OnPossess(APawn* aPawn)
+{
+	Super::OnPossess(aPawn);
+
+	if (ABaseCharacter* ShooterCharacter = Cast<ABaseCharacter>(aPawn))
+	{
+		SetHUDHealth(ShooterCharacter->GetHealth(), ShooterCharacter->GetMaxHealth());
+	}
+}
 
 void AShooterController::SetHUDHealth(float Health, float MaxHealth)
 {
@@ -36,4 +46,23 @@ void AShooterController::SetHUDHealth(float Health, float MaxHealth)
 		}
 	}
 
+}
+
+void AShooterController::SetHUDKills(float Kills)
+{
+	ShooterHUD = ShooterHUD == nullptr ? Cast<AShooterHUD>(GetHUD()) : ShooterHUD;
+	if (ShooterHUD)
+	{
+		UCharacterOverlay* CharacterOverlay = ShooterHUD->GetCharacterOverlay();
+
+		auto KillsText = CharacterOverlay->GetKillsAmountText();
+		if (CharacterOverlay && KillsText)
+		{
+			KillsText->SetText(FText::AsNumber(FMath::RoundToInt(Kills)));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Null refs in Hud, need to fix this."));
+		}
+	}
 }
