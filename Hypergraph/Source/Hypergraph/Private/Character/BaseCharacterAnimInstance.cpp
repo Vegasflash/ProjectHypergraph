@@ -17,9 +17,9 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 {
 	Super::NativeUpdateAnimation(DeltaTime);
 
-	if (BaseCharacter == nullptr) // Just in case.
+	if (!BaseCharacter.IsValid()) // Just in case.
 	{
-		BaseCharacter = Cast<ABaseCharacter>(TryGetPawnOwner());
+		BaseCharacter = MakeWeakObjectPtr(Cast<ABaseCharacter>(TryGetPawnOwner()));
 	}
 
 	if (BaseCharacter == nullptr) return;

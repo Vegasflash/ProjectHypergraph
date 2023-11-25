@@ -3,6 +3,8 @@
 
 #include "Weapon/BulletProjectile.h"
 #include "Interfaces/Damageable.h"
+#include "Kismet/GameplayStatics.h"
+#include "Interfaces/ProjectileTarget.h"
 
 
 
@@ -21,3 +23,5 @@ void ABulletProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 	// Destroy is called in the base OnHit().
 	Super::OnHit(HitComp, OtherActor, OtherComp, NormalImpulse, Hit);
 }
+
+

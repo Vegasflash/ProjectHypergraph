@@ -10,7 +10,14 @@ UCLASS()
 class HYPERGRAPH_API ABaseProjectile : public AActor
 {
 	GENERATED_BODY()
-	
+
+private:
+	UFUNCTION(Server, Reliable)
+	void Server_BulletHit(ESurfaceType SurfaceType);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_BulletHit(ESurfaceType SurfaceType);
+
 public:
 	ABaseProjectile();
 

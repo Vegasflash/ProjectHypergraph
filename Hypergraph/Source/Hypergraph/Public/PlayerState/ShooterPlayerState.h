@@ -17,10 +17,9 @@ class HYPERGRAPH_API AShooterPlayerState : public APlayerState
 	GENERATED_BODY()
 
 private:
-	virtual void PostInitializeComponents() override;
 
-	TObjectPtr<AShooterController> PlayerController;
-	TObjectPtr<ABaseCharacter> Character;
+	AShooterController* PlayerController;
+	ABaseCharacter* Character;
 
 public:
 	virtual void OnRep_Score() override;

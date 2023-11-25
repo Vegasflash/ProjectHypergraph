@@ -5,6 +5,13 @@
 #include "GPI/ShooterSpawnPoint.h"
 #include "Kismet/GameplayStatics.h"
 
+void AShooterGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+
+}
+
 AActor* AShooterGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
 	return GetRandomSpawnPoint();
@@ -18,7 +25,12 @@ void AShooterGameMode::PlayerEliminated(ABaseCharacter* EllimmedCharacter, AShoo
 		UE_LOG(LogTemp, Error, TEXT("Can't identify attacker, Null Pointer."));
 	}
 
-	AttackPlayerState = AttackerController == nullptr ? Cast<AShooterPlayerState>(AttackerController->PlayerState) : AttackPlayerState;
+	AShooterPlayerState* AttackerPlayerState = AttackerController ? Cast<AShooterPlayerState>(AttackerController->PlayerState) : nullptr;
+	AShooterPlayerState* VictimPlayerState = VictimController ? Cast<AShooterPlayerState>(VictimController->PlayerState) : nullptr;
+	if (AttackerPlayerState && (AttackerPlayerState != VictimPlayerState))
+	{
+		AttackerPlayerState->AddToScore(1.f);
+	}
 
 	if (EllimmedCharacter)
 	{
@@ -52,14 +64,14 @@ AShooterSpawnPoint* AShooterGameMode::GetRandomSpawnPoint() const
 		return Cast<AShooterSpawnPoint>(UGameplayStatics::GetActorOfClass(GetWorld(), AShooterSpawnPoint::StaticClass()));
 	}
 
-	int32 idx = FMath::RandRange(0, SpawnPoints.Num() - 1);
+	int32 idx = FMath::RandRange(0, spawnPointsCount - 1);
 
 	return SpawnPoints[idx];
 }
 
 void AShooterGameMode::RegisterPlayerSpawn(AShooterSpawnPoint* SpawnPoint)
 {
-	if (!SpawnPoints.AddUnique(SpawnPoint))
+	if (SpawnPoints.AddUnique(SpawnPoint) == -1)
 	{
 		FString SpawnPointName = SpawnPoint ? SpawnPoint->GetName() : TEXT("NullSpawnPoint");
 		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint <'%s'> was already Registered."), &SpawnPointName);
@@ -68,7 +80,7 @@ void AShooterGameMode::RegisterPlayerSpawn(AShooterSpawnPoint* SpawnPoint)
 
 void AShooterGameMode::UnregisterPlayerSpawn(AShooterSpawnPoint* SpawnPoint)
 {
-	if (!SpawnPoints.RemoveSingle(SpawnPoint))
+	if (SpawnPoints.RemoveSingle(SpawnPoint) == -1)
 	{
 		FString SpawnPointName = SpawnPoint ? SpawnPoint->GetName() : TEXT("NullSpawnPoint");
 		UE_LOG(LogTemp, Warning, TEXT("Tried to Unregister Non-Registered SpawnPoint <'%s' >"), &SpawnPointName)

@@ -48,13 +48,28 @@ void ABaseProjectile::BeginPlay()
 
 void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	ESurfaceType HitSurface = ESurfaceType::Default;
+	auto HitSurface = OtherActor->Implements<UProjectileTarget>() ?
+		IProjectileTarget::Execute_GetSurfaceType(OtherActor) :
+		ESurfaceType::Default;
 
+	Server_BulletHit(HitSurface);
+
+	Destroy();
+}
+
+void ABaseProjectile::Server_BulletHit_Implementation(ESurfaceType SurfaceType)
+{
+	Multicast_BulletHit(SurfaceType);
+}
+
+void ABaseProjectile::Multicast_BulletHit_Implementation(ESurfaceType SurfaceType)
+{
 	if (ProjectileData != nullptr)
 	{
-		FProjectileImpactData ImpactData = ProjectileData->GetImpactData()[HitSurface];
+		FProjectileImpactData ImpactData = ProjectileData->GetImpactData()[SurfaceType];
 		if (ImpactData.ImpactFX)
 		{
+
 			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactData.ImpactFX, GetActorTransform());
 		}
 
@@ -63,8 +78,6 @@ void ABaseProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UP
 			UGameplayStatics::PlaySoundAtLocation(this, ImpactData.ImpactSFX, GetActorLocation());
 		}
 	}
-
-	Destroy();
 }
 
 void ABaseProjectile::Destroyed()

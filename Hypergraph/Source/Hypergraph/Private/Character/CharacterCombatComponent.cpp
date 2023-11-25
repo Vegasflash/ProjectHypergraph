@@ -37,6 +37,7 @@ void UCharacterCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 
 	DOREPLIFETIME(UCharacterCombatComponent, EquippedWeapon);
 	DOREPLIFETIME(UCharacterCombatComponent, bIsAiming);
+	DOREPLIFETIME(UCharacterCombatComponent, CurrentFiringMode);
 }
 
 void UCharacterCombatComponent::BeginPlay()

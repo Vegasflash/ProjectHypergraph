@@ -21,7 +21,8 @@ enum class ECrosshairPosition : uint8
 	ECP_Bottom UMETA(DisplayName = "Bottom"),
 	ECP_Left UMETA(DisplayName = "Left"),
 	ECP_Right UMETA(DisplayName = "Right"),
-	Count
+
+	Count UMETA(Hidden)
 };
 
 UENUM(BlueprintType)
@@ -41,7 +42,7 @@ enum class ETurningInPlace : uint8
 	ETIP_Right UMETA(DisplayName = "Right"),
 	ETIP_NotTurning UMETA(DisplayName = "Not Turning"),
 	
-	ETIP_MAX UMETA(DisplayName = "DefaultMax"),
+	ETIP_MAX UMETA(Hidden),
 };
 
 UENUM(BlueprintType)

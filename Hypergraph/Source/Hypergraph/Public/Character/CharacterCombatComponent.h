@@ -179,6 +179,8 @@ private:
 	FRotator ProxyRotation;
 	float ProxyYaw;
 	float TimeSinceLastMovementReplication = 0;
+
+	UPROPERTY(Replicated)
 	EFiringMode CurrentFiringMode;
 
 public:

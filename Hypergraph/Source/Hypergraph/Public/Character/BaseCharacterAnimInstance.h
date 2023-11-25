@@ -24,7 +24,7 @@ protected:
 
 private:
 	UPROPERTY(BlueprintReadOnly, Category = Character, meta=(AllowPrivateAccess = "true"))
-	class ABaseCharacter* BaseCharacter;
+	TWeakObjectPtr<class ABaseCharacter> BaseCharacter;
 
 	UPROPERTY(BlueprintReadOnly, Category = Character, meta = (AllowPrivateAccess = "true"))
 	bool bKilled;

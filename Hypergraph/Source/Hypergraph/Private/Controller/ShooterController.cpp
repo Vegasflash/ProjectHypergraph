@@ -40,10 +40,6 @@ void AShooterController::SetHUDHealth(float Health, float MaxHealth)
 			CharacterOverlay->GetHealthText()->SetText(FText::FromString(HealthText));
 			return;
 		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Null refs in Hud, need to fix this."))
-		}
 	}
 
 }

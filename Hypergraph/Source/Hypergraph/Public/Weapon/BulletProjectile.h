@@ -15,8 +15,6 @@ class HYPERGRAPH_API ABulletProjectile : public ABaseProjectile
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class UDamageProcessingComponent* DamageProcessing;
 
 public:
 
@@ -24,6 +22,9 @@ public:
 
 
 protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UDamageProcessingComponent* DamageProcessing;
+
 	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit) override;
 
 private:

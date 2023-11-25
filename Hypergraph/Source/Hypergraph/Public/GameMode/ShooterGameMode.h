@@ -21,10 +21,10 @@ class HYPERGRAPH_API AShooterGameMode : public AGameMode
 
 private:
 	UPROPERTY(VisibleAnywhere)
-	TArray<AShooterSpawnPoint*> SpawnPoints;
-	TObjectPtr<AShooterPlayerState> AttackPlayerState;
+	TArray<TObjectPtr<AShooterSpawnPoint>> SpawnPoints;
 
 public:
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	virtual void PlayerEliminated(ABaseCharacter* ElimmedCharacter, AShooterController* VictimController, AShooterController* AttackerController);

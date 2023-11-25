@@ -28,6 +28,9 @@ class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInter
 	const float MIN_DISSOLVE_PARAM = -0.25f;
 
 public:
+	
+	//DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerLoggedInDelegate, AShooterController*, Controller)
+	//FOnPlayerLoggedInDelegate OnPlayerLoggedIn;
 
 	// Sets default values for this character's properties
 	ABaseCharacter();
@@ -76,37 +79,36 @@ private:
 
 	// Camera 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
-	class USpringArmComponent* SpringArmComponent;
+	TObjectPtr<class USpringArmComponent> SpringArmComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	class UCameraComponent* FollowCamera;
+	TObjectPtr<class UCameraComponent> FollowCamera;
 
 	// Input 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputMappingContext* DefaultMappingContext;
+	TObjectPtr<class UInputMappingContext> DefaultMappingContext;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* JumpAction;
+	TObjectPtr<UInputAction> JumpAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* CrouchAction;
+	TObjectPtr<UInputAction> CrouchAction;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* MoveAction;
+	TObjectPtr<UInputAction> MoveAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	class UInputAction* LookAction;
+	TObjectPtr<UInputAction> LookAction;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = UI, meta = (AllowPrivateAccess = "true"))
-	class UWidgetComponent* OverheadWidget;
+	TObjectPtr<class UWidgetComponent> OverheadWidget;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class UCharacterCombatComponent* CombatComponent;
+	TObjectPtr<UCharacterCombatComponent> CombatComponent;
 	
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
 	class ABaseWeapon* OverlappingWeapon;
 	
-
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(ABaseWeapon* LastWeapon);
 
