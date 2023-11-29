@@ -2,6 +2,7 @@
 
 
 #include "Multithread/ThreadActor.h"
+#include "Multithread/ActorRunnable.h"
 
 // Sets default values
 AThreadActor::AThreadActor()
@@ -11,6 +12,26 @@ AThreadActor::AThreadActor()
 
 }
 
+void AThreadActor::InitCalculations(int32 _Calcluations)
+{
+	if (_Calcluations > 0)
+	{
+		if (!ActorRunnable.IsValid())
+		{
+			ActorRunnable = MakeUnique<FActorRunnable>(_Calcluations, this);
+		}
+
+		if (CurrentRunningThread == nullptr)
+		{
+			CurrentRunningThread = FRunnableThread::Create(ActorRunnable.Get(), TEXT("Calculation Thread"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Calculations must be greater than 0."));
+	}
+}
+
 // Called when the game starts or when spawned
 void AThreadActor::BeginPlay()
 {
@@ -18,10 +39,24 @@ void AThreadActor::BeginPlay()
 	
 }
 
-// Called every frame
 void AThreadActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	PrintCalcData();
 }
 
+void AThreadActor::EndPlay(EEndPlayReason::Type Reason)
+{
+	Super::EndPlay(Reason);
+
+	SUSPEND_EXIT_KILL_WAIT(CurrentRunningThread, ActorRunnable)
+}
+
+void AThreadActor::PrintCalcData()
+{
+	if (!ThreadCalcQueue.IsEmpty() && ThreadCalcQueue.Dequeue(ProcessedCalculation))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Processed Calculation: %d"), ProcessedCalculation);
+	}
+}

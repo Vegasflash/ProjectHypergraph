@@ -6,7 +6,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Multithread/GenericRunnable.h"
-
+#include "Multithread/ActorRunnable.h"
 #include "MultithreadSubsystem.generated.h"
 
 UCLASS()

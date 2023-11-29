@@ -18,12 +18,13 @@ void UMultithreadSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	CurrentTime = UGameplayStatics::GetRealTimeSeconds(GetWorld());
 	// Right off the rip lets start a runnable and check how much time it takes to execute.
 
-	TestRunnable = MakeShared<FGenericRunnable>();
-	if (TestRunnable.IsValid())
-	{
-		TestRunnable->OnCompletion.BindUFunction(this, FName("CallbackTest"));
-		TestRunnable->Begin();
-	}
+	//TestRunnable = MakeShared<FGenericRunnable>();
+	//if (TestRunnable.IsValid())
+	//{
+	//	TestRunnable->OnCompletion.BindUFunction(this, FName("CallbackTest"));
+	//	TestRunnable->Begin();
+	//}
+
 }
 
 void UMultithreadSubsystem::CallbackTest()
@@ -36,8 +37,8 @@ void UMultithreadSubsystem::CallbackTest()
 void UMultithreadSubsystem::Deinitialize()
 {
 	Super::Deinitialize();
-	if (TestRunnable.IsValid())
-	{
-		TestRunnable->Stop();
-	}
+	//if (TestRunnable.IsValid())
+	//{
+	//	TestRunnable->Stop();
+	//}
 }

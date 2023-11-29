@@ -77,8 +77,9 @@ void UCharacterCombatComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	if (Character->IsLocallyControlled())
 	{
 		SetHUDCrosshairs(DeltaTime);
-		ScanUnderCrossHair(ScanHitResult);
+		//ScanUnderCrossHair(ScanHitResult);
 		InterpFoV(DeltaTime);
+		GetWorld()->AsyncLineTraceByChannel
 	}
 
 	if (EquippedWeapon != nullptr)
@@ -513,8 +514,6 @@ void UCharacterCombatComponent::ProcessFiring()
 
 	FHitResult HitResult;
 	ScanUnderCrossHair(HitResult);
-	//TODO - Remove me
-	DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, 5.f, 12, FColor::Blue, false, 1.0f);
 
 	ServerFire(HitResult.ImpactPoint);
 }
@@ -609,6 +608,8 @@ void UCharacterCombatComponent::ScanUnderCrossHair(FHitResult& TraceHitResult)
 		FCollisionResponseParams ResponseParams;
 		FCollisionQueryParams TraceParams(FName(TEXT("MyTraceTag")), false, GetOwner());
 		TraceParams.IgnoreMask = ECC_OverlapVolume;
+
+		// Async
 
 		GetWorld()->LineTraceSingleByChannel(TraceHitResult, Start, End, ECollisionChannel::ECC_Visibility, TraceParams, ResponseParams);
 
