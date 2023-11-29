@@ -77,9 +77,7 @@ void UCharacterCombatComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	if (Character->IsLocallyControlled())
 	{
 		SetHUDCrosshairs(DeltaTime);
-		//ScanUnderCrossHair(ScanHitResult);
 		InterpFoV(DeltaTime);
-		GetWorld()->AsyncLineTraceByChannel
 	}
 
 	if (EquippedWeapon != nullptr)
