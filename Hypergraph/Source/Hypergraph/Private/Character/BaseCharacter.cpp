@@ -138,6 +138,34 @@ void ABaseCharacter::ElimTimerFinished()
 	}
 }
 
+void ABaseCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	if (auto ShooterState = Cast<AShooterPlayerState>(GetPlayerState()))
+	{
+		ShooterState->OnShooterCharacterPossesed(this);
+	}
+}
+
+void ABaseCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	auto State = GetPlayerState();
+	if (auto ShooterState = Cast<AShooterPlayerState>(State))
+	{
+		ShooterState->OnShooterCharacterStateReplicated(this);
+
+		ShooterController = ShooterController == nullptr ? Cast<AShooterController>(GetController()) : ShooterController;
+		if (ShooterController)
+		{
+			ShooterController->SetHUDKills(ShooterState->GetScore());
+			ShooterController->SetHUDDeaths(0);
+		}
+	}
+}
+
 void ABaseCharacter::Multicast_Elim_Implementation()
 {
 	bKilled = true;
@@ -415,6 +443,14 @@ void ABaseCharacter::DoPlayerDeathSequence()
 	}
 
 	StartDissolve();
+}
+UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const
+{
+	if (auto ShooterPlayerState = Cast<AShooterPlayerState>(GetPlayerState()))
+	{
+		return ShooterPlayerState->GetAbilitySystemComponent();
+	}
+	return nullptr;
 }
 #pragma endregion
 // It's important that we pass along the damage because the HitDirection and Health are not replicated at the same time.

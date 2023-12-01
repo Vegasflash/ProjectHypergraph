@@ -7,6 +7,7 @@
 #include "InputAction.h"
 #include "GameEnums.h"
 #include "HUD/ShooterHUD.h"
+
 #include "CharacterCombatComponent.generated.h"
 
 #define TRACE_LENGTH 10000

@@ -1,4 +1,4 @@
-#include "C:/Users/maske/Documents/Unreal Projects/Hypergraph/ProjectHypergraph/Hypergraph/Intermediate/Build/Win64/x64/HypergraphEditor/Development/Engine/SharedDefinitions.Engine.Cpp17.h"
+#include "C:/Users/maske/Documents/Unreal Projects/Hypergraph/ProjectHypergraph/Hypergraph/Intermediate/Build/Win64/x64/HypergraphEditor/DebugGame/Engine/SharedDefinitions.Engine.NonOptimized.Cpp17.h"
 #undef UE_IS_ENGINE_MODULE
 #undef DEPRECATED_FORGAME
 #define DEPRECATED_FORGAME DEPRECATED

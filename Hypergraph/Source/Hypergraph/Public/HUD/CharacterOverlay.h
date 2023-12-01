@@ -23,9 +23,13 @@ private:
 
 	UPROPERTY(meta = (BindWidget, AllowPrivateAccess = "true"))
 	class UTextBlock* KillsAmountText;
+	
+	UPROPERTY(meta = (BindWidget, AllowPrivateAccess = "true"))
+	class UTextBlock* DeathAmountText;
 
 public:
 	FORCEINLINE UProgressBar* GetHealthBar() const { return HealthBar; }
 	FORCEINLINE UTextBlock* GetHealthText() const { return HealthText; }
 	FORCEINLINE UTextBlock* GetKillsAmountText() const { return KillsAmountText; }
+	FORCEINLINE UTextBlock* GetDeathAmountText() const { return DeathAmountText; }
 };

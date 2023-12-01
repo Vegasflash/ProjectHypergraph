@@ -1,0 +1,12 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-MultiplayerSessions-Win64-DebugGame.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:\Users\maske\Documents\Unreal Projects\Hypergraph\ProjectHypergraph\Hypergraph\Intermediate\Build\Win64\x64\HypergraphEditor\DebugGame\Engine\SharedPCH.Engine.NonOptimized.Cpp17.h.obj"
+"C:\Users\maske\Documents\Unreal Projects\Hypergraph\ProjectHypergraph\Hypergraph\Plugins\MultiplayerSessions\Intermediate\Build\Win64\x64\UnrealEditor\DebugGame\MultiplayerSessions\Module.MultiplayerSessions.cpp.obj"
+"C:\Users\maske\Documents\Unreal Projects\Hypergraph\ProjectHypergraph\Hypergraph\Plugins\MultiplayerSessions\Intermediate\Build\Win64\x64\UnrealEditor\DebugGame\MultiplayerSessions\Default.rc2.res"
+/OUT:"C:\Users\maske\Documents\Unreal Projects\Hypergraph\ProjectHypergraph\Hypergraph\Plugins\MultiplayerSessions\Intermediate\Build\Win64\x64\UnrealEditor\DebugGame\MultiplayerSessions\UnrealEditor-MultiplayerSessions-Win64-DebugGame.lib"

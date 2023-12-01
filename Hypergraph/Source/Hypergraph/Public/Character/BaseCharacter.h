@@ -13,6 +13,9 @@
 #include "Controller/ShooterController.h"
 #include "ActorComponent/DamageProcessingComponent.h"
 #include "Components/TimelineComponent.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include <GameplayEffectTypes.h>
 
 #include "BaseCharacter.generated.h"
 
@@ -20,7 +23,7 @@ static const FName DISSOLVE_PARAM_NAME = TEXT("Dissolve");
 static const FName GLOW_INT_PARAM_NAME = TEXT("GlowIntensity");
 
 UCLASS()
-class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInteractable, public IProjectileTarget, public IDamageable
+class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInteractable, public IProjectileTarget, public IDamageable, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -28,9 +31,6 @@ class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInter
 	const float MIN_DISSOLVE_PARAM = -0.25f;
 
 public:
-	
-	//DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerLoggedInDelegate, AShooterController*, Controller)
-	//FOnPlayerLoggedInDelegate OnPlayerLoggedIn;
 
 	// Sets default values for this character's properties
 	ABaseCharacter();
@@ -54,6 +54,11 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_DoPlayerDeathSequence();
 	void DoPlayerDeathSequence();
+
+	//~ Begin IAbilitySystemInterface
+/** Returns our Ability System Component. */
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	//~ End IAbilitySystemInterface
 
 protected:
 	// Called when the game starts or when spawned
@@ -157,13 +162,18 @@ private:
 	void Multicast_PlayDamageMontage(const EDirection& HitDirection, const float& Damage);
 	//
 
+	// Elim Timer
 	FTimerHandle ElimTimer;
 
 	UPROPERTY(EditDefaultsOnly)
 	float ElimDelay = 3.f;
 
 	void ElimTimerFinished();
+	//
 
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
+	
 	/*DEBUG*/
 	UFUNCTION(Exec, Category = "Commands")
 	void DebugHitScan();

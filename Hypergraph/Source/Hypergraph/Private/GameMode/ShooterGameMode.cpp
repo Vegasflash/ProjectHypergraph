@@ -30,6 +30,7 @@ void AShooterGameMode::PlayerEliminated(ABaseCharacter* EllimmedCharacter, AShoo
 	if (AttackerPlayerState && (AttackerPlayerState != VictimPlayerState))
 	{
 		AttackerPlayerState->AddToScore(1.f);
+		VictimPlayerState->AddToDeath(1.f);
 	}
 
 	if (EllimmedCharacter)

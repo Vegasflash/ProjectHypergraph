@@ -12,6 +12,20 @@ public class Hypergraph : ModuleRules
 		PrivateIncludePaths.AddRange(new string[]{ });
 		PublicIncludePathModuleNames.AddRange(new string[]{ });
 		PrivateIncludePathModuleNames.AddRange(new string[]{ });
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "HeadMountedDisplay", "EnhancedInput", "OnlineSubsystem", "OnlineSubsystemSteam", "UMG", "SlateCore"  });
+		PublicDependencyModuleNames.AddRange(new string[] {
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"InputCore",
+			"HeadMountedDisplay",
+			"EnhancedInput",
+			"OnlineSubsystem",
+			"OnlineSubsystemSteam",
+			"UMG",
+			"SlateCore",
+			"GameplayAbilities",
+			"GameplayTags",
+			"GameplayTasks"
+		});
 	}
 }

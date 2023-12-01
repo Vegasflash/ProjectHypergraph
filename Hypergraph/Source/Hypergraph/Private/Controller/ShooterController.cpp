@@ -7,6 +7,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Character/BaseCharacter.h"
+#include "PlayerState/ShooterPlayerState.h"
 
 void AShooterController::BeginPlay()
 {
@@ -62,3 +63,25 @@ void AShooterController::SetHUDKills(float Kills)
 		}
 	}
 }
+
+void AShooterController::SetHUDDeaths(float Deaths)
+{
+	ShooterHUD = ShooterHUD == nullptr ? Cast<AShooterHUD>(GetHUD()) : ShooterHUD;
+	if (ShooterHUD)
+	{
+		UCharacterOverlay* CharacterOverlay = ShooterHUD->GetCharacterOverlay();
+
+		auto DeathText = CharacterOverlay->GetDeathAmountText();
+		if (CharacterOverlay && DeathText)
+		{
+			DeathText->SetText(FText::AsNumber(FMath::RoundToInt(Deaths)));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Null refs in Hud, need to fix this."));
+		}
+	}
+	
+}
+
+
