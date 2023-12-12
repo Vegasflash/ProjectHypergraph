@@ -14,6 +14,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameEnums.h"
 #include "Hypergraph.h"
+#include "GAS/GameplayAbility/FireWeaponAbility.h"
 
 UCharacterCombatComponent::UCharacterCombatComponent() :
 	MaxCrosshairInAirSpread(2.25f),
@@ -38,6 +39,7 @@ void UCharacterCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 	DOREPLIFETIME(UCharacterCombatComponent, EquippedWeapon);
 	DOREPLIFETIME(UCharacterCombatComponent, bIsAiming);
 	DOREPLIFETIME(UCharacterCombatComponent, CurrentFiringMode);
+	DOREPLIFETIME(UCharacterCombatComponent, ScanHitResult);
 }
 
 void UCharacterCombatComponent::BeginPlay()
@@ -151,6 +153,12 @@ void UCharacterCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip)
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
 
 	ProcessWeaponEquip();
+
+	if (auto ASC = Character->GetAbilitySystemComponent())
+	{
+		auto PrimaryFire = EquippedWeapon->GetPrimaryFireAbilityClass();
+		FGameplayAbilitySpecHandle AbilitySpecHandle = ASC->GiveAbility(FGameplayAbilitySpec(PrimaryFire, 1, -1, Character));
+	}
 
 	EquippedWeapon->SetOwner(Character);
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
@@ -516,18 +524,35 @@ void UCharacterCombatComponent::ProcessFiring()
 	ServerFire(HitResult.ImpactPoint);
 }
 
-void UCharacterCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
+void UCharacterCombatComponent::FireWeapon_Server_Implementation()
 {
-	MulticastFire(TraceHitTarget);
+	FireWeapon_Multicast();
 }
 
-void UCharacterCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
+void UCharacterCombatComponent::FireWeapon_Multicast_Implementation()
 {
-	if (EquippedWeapon)
+	if (EquippedWeapon && Character)
 	{
 		PlayFireRifleMontage(true);
-		EquippedWeapon->Fire(TraceHitTarget);
 		CrosshairFiringFactor += EquippedWeapon->GetRecoilIntensity();
+	}
+}
+
+void UCharacterCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
+{
+	if (!EquippedWeapon || !Character || !GetOwner()->HasAuthority()) return;
+	
+	ScanHitResult = TraceHitTarget;
+	if (auto PrimaryFire = EquippedWeapon->GetPrimaryFireAbilityClass())
+	{
+		auto ASC = Character->GetAbilitySystemComponent();
+
+		const FGameplayAbilitySpec* FireWeaponAbilitySpec = ASC->FindAbilitySpecFromClass(PrimaryFire);
+		UFireWeaponAbility* FireWeaponAbility = Cast<UFireWeaponAbility>(FireWeaponAbilitySpec->Ability);
+		if (!ASC->TryActivateAbility(FireWeaponAbilitySpec->Handle)) // Abiltity replicated to server.
+		{
+			UE_LOG(LogTemp, Error, TEXT("Activation Failed"));
+		}
 	}
 }
 
@@ -544,7 +569,7 @@ void UCharacterCombatComponent::PlayFireRifleMontage(bool bAiming)
 
 void UCharacterCombatComponent::PlayHitReactMontage(const EDirection& Direction)
 {
-	if (EquippedWeapon == nullptr) return;
+	//if (EquippedWeapon == nullptr) return;
 
 	UAnimInstance* AnimInstance = Character->GetMesh()->GetAnimInstance();
 
@@ -568,8 +593,6 @@ void UCharacterCombatComponent::OnDeathEnd()
 {
 	UE_LOG(LogTemp, Warning, TEXT("DEATH REGISTERED."));
 }
-
-
 
 #pragma endregion
 

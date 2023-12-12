@@ -4,10 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
-#include "Controller/ShooterController.h"
-#include "Character/BaseCharacter.h"
 
 #include "ShooterPlayerState.generated.h"
+
+class AShooterController;
+class ABaseCharacter;
 
 /**
  *
@@ -19,13 +20,14 @@ class HYPERGRAPH_API AShooterPlayerState : public APlayerState, public IAbilityS
 
 private:
 	AShooterPlayerState();
+	~AShooterPlayerState();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	virtual void RegisterPlayerWithSession(bool bWasFromInvite) override;
-	bool ValidatePlayerRefs();
+	bool ValidateCharacterRef();
+	bool ValidateControllerRef();
 
-	AShooterController* PlayerController;
-	ABaseCharacter* Character;
+	TWeakObjectPtr<AShooterController> ShooterController;
+	TWeakObjectPtr<ABaseCharacter> BaseCharacter;
 
 	UPROPERTY(ReplicatedUsing = OnRep_DeathCount)
 	int DeathCount = 0;
@@ -41,6 +43,9 @@ private:
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	///
 
+	UFUNCTION()
+	void OnHealthAttributeUpdated(const FGameplayAttributeData& OldHealth, const FGameplayAttributeData& NewHealth);
+
 public:
 	virtual void OnRep_Score() override;
 	void AddToScore(float ScoreAmount);
@@ -51,6 +56,8 @@ public:
 	void OnShooterCharacterPossesed(ABaseCharacter* ShooterCharacter);
 	void OnShooterCharacterStateReplicated(ABaseCharacter* ShooterCharacter);
 
+	class ABaseCharacter* GetCharacter();
+
 	// GAMEPLAY ABILITIES
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayEffect> DefaultAttributeEffect;
@@ -58,6 +65,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "GAS")
 	TArray<TSubclassOf<class UGameplayAbility>> DefaultAbilities;
 	///
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	FORCEINLINE UAbilitySystemComponent* GetAbilitySystemComponent() const { return AbilitySystemComponent; }
+	FORCEINLINE class UGlobalAttributeSet* GetAttributes() { return Attributes; }
+
+	// Inherited via IAbilitySystemInterface
 };

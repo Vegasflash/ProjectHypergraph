@@ -5,13 +5,8 @@
 #include "CoreMinimal.h"
 
 /**
- * 
+ *
  */
-class HYPERGRAPH_API GameEnums
-{
-
-	
-};
 
 UENUM(BlueprintType)
 enum class ECrosshairPosition : uint8
@@ -31,7 +26,7 @@ enum class EWeaponState : uint8
 	EWS_Initial UMETA(DisplayName = "Initial"),
 	EWS_Equipped UMETA(DisplayName = "Equipped"),
 	EWS_Dropped UMETA(DisplayName = "Dropped"),
-	
+
 	EWS_MAX UMETA(DisplayName = "DefaultMax"),
 };
 
@@ -41,7 +36,7 @@ enum class ETurningInPlace : uint8
 	ETIP_Left UMETA(DisplayName = "Left"),
 	ETIP_Right UMETA(DisplayName = "Right"),
 	ETIP_NotTurning UMETA(DisplayName = "Not Turning"),
-	
+
 	ETIP_MAX UMETA(Hidden),
 };
 
@@ -77,9 +72,32 @@ UENUM(BlueprintType)
 enum class ESurfaceType : uint8
 {
 	Default UMETA(DisplayName = "Default"),
-	Wood UMETA(DisplayName = "Wood"),
-	Stone UMETA(DisplayName = "Stone"),
-	Metal UMETA(DisplayName = "Metal"),
-	Water UMETA(DisplayName = "Water"),
-	Flesh UMETA(DisplayName = "Flesh"),
+	Wood    UMETA(DisplayName = "Wood"),
+	Stone   UMETA(DisplayName = "Stone"),
+	Metal   UMETA(DisplayName = "Metal"),
+	Water   UMETA(DisplayName = "Water"),
+	Flesh   UMETA(DisplayName = "Flesh"),
+};
+
+class HYPERGRAPH_API GameEnums
+{
+public:
+	static FName GetSurfaceTagName(ESurfaceType SurfaceType)
+	{
+		switch (SurfaceType)
+		{
+		case ESurfaceType::Wood:
+			return FName(TEXT("Surface.Wood"));
+		case ESurfaceType::Stone:
+			return FName(TEXT("Surface.Stone"));
+		case ESurfaceType::Metal:
+			return FName(TEXT("Surface.Metal"));
+		case ESurfaceType::Flesh:
+			return FName(TEXT("Surface.Flesh"));
+		case ESurfaceType::Water:
+			return FName(TEXT("Surface.Water"));
+		default:
+			return FName(TEXT("Surface.Flesh"));
+		}
+	}
 };

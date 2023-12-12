@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Weapon/BaseProjectile.h"
-#include "ActorComponent/DamageProcessingComponent.h"
 #include "BulletProjectile.generated.h"
 
+class UDamageProcessingComponent;
 /**
  * 
  */

@@ -18,7 +18,9 @@
 #include "GameEnums.h"
 #include "GameMode/ShooterGameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "PlayerState/ShooterPlayerState.h"
 #include "TimerManager.h"
+#include "GAS//GlobalAttributeSet.h"
 
 // Sets default values
 ABaseCharacter::ABaseCharacter()
@@ -67,7 +69,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABaseCharacter, OverlappingWeapon, COND_OwnerOnly);
-	DOREPLIFETIME(ABaseCharacter, Health);
 }
 
 void ABaseCharacter::PostInitializeComponents()
@@ -102,12 +103,7 @@ void ABaseCharacter::BeginPlay()
 		}
 	}
 
-	UpdateHUDHealth();
-
-	if (HasAuthority())
-	{
-		OnTakeAnyDamage.AddDynamic(this, &ThisClass::ReceiveDamage);
-	}
+	RefreshHUD_Server();
 }
 
 
@@ -152,18 +148,15 @@ void ABaseCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 
-	auto State = GetPlayerState();
-	if (auto ShooterState = Cast<AShooterPlayerState>(State))
-	{
-		ShooterState->OnShooterCharacterStateReplicated(this);
+	if (!GetShooterPlayerState()) return;
 
-		ShooterController = ShooterController == nullptr ? Cast<AShooterController>(GetController()) : ShooterController;
-		if (ShooterController)
-		{
-			ShooterController->SetHUDKills(ShooterState->GetScore());
-			ShooterController->SetHUDDeaths(0);
-		}
-	}
+	ShooterPlayerState->OnShooterCharacterStateReplicated(this);
+
+	if (!GetShooterController()) return;
+
+	ShooterController->SetHUDHealth(GetHealth(), GetMaxHealth());
+	ShooterController->SetHUDKills(ShooterPlayerState->GetScore());
+	ShooterController->SetHUDDeaths(0);
 }
 
 void ABaseCharacter::Multicast_Elim_Implementation()
@@ -276,6 +269,20 @@ void ABaseCharacter::OnRep_ReplicatedMovement()
 	}
 }
 
+// Getter Property.
+AShooterController* ABaseCharacter::GetShooterController() const
+{
+	ShooterController = !ShooterController.IsValid() ? MakeWeakObjectPtr<AShooterController>(Cast<AShooterController>(GetController())) : ShooterController;
+	return ShooterController.Get();
+}
+
+// Getter Property.
+AShooterPlayerState* ABaseCharacter::GetShooterPlayerState() const
+{
+	ShooterPlayerState = !ShooterPlayerState.IsValid() ? MakeWeakObjectPtr<AShooterPlayerState>(Cast<AShooterPlayerState>(GetPlayerState())) : ShooterPlayerState;
+	return ShooterPlayerState.Get();
+}
+
 #pragma endregion 
 
 #pragma region Weapon Detection
@@ -326,71 +333,109 @@ void ABaseCharacter::HideCameraIfCameraClose()
 	}
 }
 
-void ABaseCharacter::ReceiveDamage_Implementation(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+void ABaseCharacter::Server_HitDetected_Implementation(AController* Attacker, const EDirection& HitDirection)
 {
+	auto curHp = GetShooterPlayerState()->GetAttributes()->GetHealth();
+	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SERVER: Health = %f"), curHp);
+		HitDetected(Attacker, HitDirection);
+	}
+
+	Multicast_HitDetected(Attacker, HitDirection);
+}
+
+void ABaseCharacter::Multicast_HitDetected_Implementation(AController* Attacker, const EDirection& HitDirection)
+{
+	auto curHp = GetShooterPlayerState()->GetAttributes()->GetHealth();
+	
+	UE_LOG(LogTemp, Warning, TEXT("CLIENT: Health = %f"), curHp);
+	
+	HitDetected(Attacker, HitDirection);
+}
+
+void ABaseCharacter::HitDetected(AController* Attacker, const EDirection& HitDirection)
+{
+	auto curHp = GetShooterPlayerState()->GetAttributes()->GetHealth();
+
+	if (GetShooterPlayerState()->GetAttributes()->GetHealth() <= 0)
+	{
+		KillCharacter(Attacker, HitDirection);
+		return;
+	}
+
+	CombatComponent->PlayHitReactMontage(HitDirection);
+}
+
+void ABaseCharacter::KillCharacter(AController* Attacker, const EDirection& HitDirection)
+{
+	CombatComponent->PlayDeathReactMontage(HitDirection);
 	// This is only being executed on the Server
 
-	float HealthPreview = FMath::Clamp(Health - Damage, 0.f, MaxHealth);
+	//float HealthPreview = FMath::Clamp(GetHealth() - Damage, 0.f, GetMaxHealth());
 
 	if (CombatComponent)
 	{
 		// Notify Hit Actors of impact.
-		if (DamagedActor->Implements<UProjectileTarget>())
+		//if (DamagedActor->Implements<UProjectileTarget>())
 		{
-			TScriptInterface<IProjectileTarget> target;
-			target.SetObject(DamagedActor);
-
-
-			ESurfaceType HitSurface = target->Execute_GetSurfaceType(DamagedActor);
+			//TScriptInterface<IProjectileTarget> target;
+			//target.SetObject(DamagedActor);
+			//
+			//
+			//ESurfaceType HitSurface = target->Execute_GetSurfaceType(DamagedActor);
 		}
-		else
+		//else
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Projectile hit an unknown surface type."));
+			//UE_LOG(LogTemp, Warning, TEXT("Projectile hit an unknown surface type."));
 		}
 
 		// Health is updated, now we execute the Animations for character hit.
-		FVector StartLocation = DamageCauser->GetActorLocation();
-		FVector EndLocation = DamagedActor->GetActorLocation();
+		//FVector StartLocation = DamageCauser->GetActorLocation();
+		//FVector EndLocation = DamagedActor->GetActorLocation();
+		//
+		//FCollisionQueryParams CollisionParams;
+		//CollisionParams.AddIgnoredActor(DamageCauser);
 
-		FCollisionQueryParams CollisionParams;
-		CollisionParams.AddIgnoredActor(DamageCauser);
-
-		FHitResult HitResult;
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams))
-		{
-			FVector ImpactNormal = HitResult.ImpactNormal;
-
-			FTransform Transform = DamagedActor->GetActorTransform();
-			FVector OtherForward = Transform.GetUnitAxis(EAxis::X);
-			FVector OtherRight = Transform.GetUnitAxis(EAxis::Y);
-
-			float DotForward = FVector::DotProduct(ImpactNormal, OtherForward);
-			float DotRight = FVector::DotProduct(ImpactNormal, OtherRight);
-
-			LastHitDirection =
-				DotForward > 0.7f ? LastHitDirection = EDirection::ED_Forward :
-				DotForward < -0.7f ? LastHitDirection = EDirection::ED_Back :
-				DotRight > 0.7f ? LastHitDirection = EDirection::ED_Right :
-				DotRight < -0.7f ? LastHitDirection = EDirection::ED_Left :
-				EDirection::ED_Forward;
-
-			if (HealthPreview <= 0)
-			{
-				if (AShooterGameMode* CurrentGameMode = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode()))
-				{
-					ShooterController = ShooterController == nullptr ? Cast<AShooterController>(GetController()) : ShooterController;
-					AShooterController* AttackerController = Cast<AShooterController>(InstigatedBy);
-					CurrentGameMode->PlayerEliminated(this, ShooterController, AttackerController);
-				}
-			}
-
-			Server_PlayDamageMontage(LastHitDirection, Damage);
-		}
+		//FHitResult HitResult;
+		//if (GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams))
+		//{
+		//	FVector ImpactNormal = HitResult.ImpactNormal;
+		//
+		//	FTransform Transform = DamagedActor->GetActorTransform();
+		//	FVector OtherForward = Transform.GetUnitAxis(EAxis::X);
+		//	FVector OtherRight = Transform.GetUnitAxis(EAxis::Y);
+		//
+		//	float DotForward = FVector::DotProduct(ImpactNormal, OtherForward);
+		//	float DotRight = FVector::DotProduct(ImpactNormal, OtherRight);
+		//
+		//	LastHitDirection =
+		//		DotForward > 0.7f ? LastHitDirection = EDirection::ED_Forward :
+		//		DotForward < -0.7f ? LastHitDirection = EDirection::ED_Back :
+		//		DotRight > 0.7f ? LastHitDirection = EDirection::ED_Right :
+		//		DotRight < -0.7f ? LastHitDirection = EDirection::ED_Left :
+		//		EDirection::ED_Forward;
+		//
+		//	if (HealthPreview <= 0)
+		//	{
+		//		if (AShooterGameMode* CurrentGameMode = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode()))
+		//		{
+		//			AShooterController* AttackerController = Cast<AShooterController>(InstigatedBy);
+		//			CurrentGameMode->PlayerEliminated(this, GetShooterController(), AttackerController);
+		//		}
+		//	}
+		//
+		//	Server_PlayDamageMontage(LastHitDirection, Damage);
+		//}
 	}
 
-	Health = FMath::Clamp(HealthPreview, 0.f, MaxHealth);
+	if (AShooterGameMode* CurrentGameMode = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode()))
+	{
+		AShooterController* AttackerController = Cast<AShooterController>(Attacker);
+		CurrentGameMode->PlayerEliminated(this, GetShooterController(), AttackerController);
+	}
 
-	UpdateHUDHealth();
+	//UpdateHUDHealth();
 }
 
 #pragma region Ragdoll
@@ -446,11 +491,7 @@ void ABaseCharacter::DoPlayerDeathSequence()
 }
 UAbilitySystemComponent* ABaseCharacter::GetAbilitySystemComponent() const
 {
-	if (auto ShooterPlayerState = Cast<AShooterPlayerState>(GetPlayerState()))
-	{
-		return ShooterPlayerState->GetAbilitySystemComponent();
-	}
-	return nullptr;
+	return GetShooterPlayerState() == nullptr ? nullptr : ShooterPlayerState->GetAbilitySystemComponent();
 }
 #pragma endregion
 // It's important that we pass along the damage because the HitDirection and Health are not replicated at the same time.
@@ -461,7 +502,7 @@ void ABaseCharacter::Server_PlayDamageMontage_Implementation(const EDirection& H
 
 void ABaseCharacter::Multicast_PlayDamageMontage_Implementation(const EDirection& HitDirection, const float& Damage)
 {
-	if ((Health - Damage) <= 0)
+	if ((GetHealth() - Damage) <= 0)
 	{
 		CombatComponent->PlayDeathReactMontage(HitDirection);
 
@@ -472,19 +513,49 @@ void ABaseCharacter::Multicast_PlayDamageMontage_Implementation(const EDirection
 	}
 }
 
+float ABaseCharacter::GetHealth() const
+{
+	if (!GetShooterPlayerState()) { return 0.f; }
 
-void ABaseCharacter::OnRep_Health()
+	if (auto attributes = ShooterPlayerState->GetAttributes())
+	{
+		return attributes->GetHealth();
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("Failed to find Attributes in Player State."));
+	return 0.0f;
+}
+
+float ABaseCharacter::GetMaxHealth() const
+{
+	if (!GetShooterPlayerState()) { return 0.f; }
+
+	if (auto attributes = ShooterPlayerState->GetAttributes())
+	{
+		return attributes->GetMaxHealth();
+
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("Failed to find Attributes in Player State."));
+	return 0.0f;
+}
+
+void ABaseCharacter::RefreshHUD_Server_Implementation()
+{
+	UpdateHUDHealth();
+	RefreshHUD_Multicast();
+}
+
+void ABaseCharacter::RefreshHUD_Multicast_Implementation()
 {
 	UpdateHUDHealth();
 }
 
 void ABaseCharacter::UpdateHUDHealth()
 {
-	ShooterController = ShooterController == nullptr ? Cast<AShooterController>(Controller) : ShooterController;
-	if (ShooterController)
-	{
-		ShooterController->SetHUDHealth(Health, MaxHealth);
-	}
+	if (!GetShooterController()) return; 
+
+	ShooterController->SetHUDHealth(GetHealth(), GetMaxHealth());
 }
 
 #pragma region Dissolve
@@ -499,7 +570,7 @@ void ABaseCharacter::OnDissolveTimelineTick(float DissolveValue)
 void ABaseCharacter::StartDissolve()
 {
 	DissolveTrack.BindDynamic(this, &ThisClass::OnDissolveTimelineTick);
-	
+
 	if (DissolveCurve && DissolveTimeline)
 	{
 		DissolveTimeline->AddInterpFloat(DissolveCurve, DissolveTrack);

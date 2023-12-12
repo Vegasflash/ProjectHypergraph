@@ -4,11 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "GameFrameWork/PlayerState.h"
+
 #include "ShooterController.generated.h"
-
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerLoggedInDelegate, APlayerState*, State);
 
 /**
  * 
@@ -24,17 +21,9 @@ public:
 
 	virtual void OnPossess(APawn* aPawn) override;
 
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnPlayerLoggedInDelegate OnPlayerLoggedIn;
-
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	class AShooterHUD* ShooterHUD;
-
-
-
-
-	
 };

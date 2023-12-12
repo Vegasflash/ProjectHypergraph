@@ -34,7 +34,7 @@ void AShooterController::SetHUDHealth(float Health, float MaxHealth)
 	{
 		if (UCharacterOverlay* CharacterOverlay = ShooterHUD->GetCharacterOverlay())
 		{
-			const float HealthPercent = Health / MaxHealth;
+			const float HealthPercent = MaxHealth < 0.1 ? 0 : Health / MaxHealth; // potential 0 div.
 			CharacterOverlay->GetHealthBar()->SetPercent(HealthPercent);
 
 			FString HealthText = FString::Printf(TEXT("%d/%d"), FMath::CeilToInt(Health), FMath::CeilToInt(MaxHealth));

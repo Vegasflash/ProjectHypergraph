@@ -75,7 +75,7 @@ void UBaseCharacterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 				LeftHandTransform.SetLocation(OutLocation);
 				LeftHandTransform.SetRotation(FQuat(OutRotation));
 
-				auto CrosshairImpactPoint = BaseCharacter->GetScanHitResult()->ImpactPoint;
+				auto CrosshairImpactPoint = BaseCharacter->GetHitPosition();
 
 				bLocallyControlled = BaseCharacter->IsLocallyControlled();
 				if (bLocallyControlled)

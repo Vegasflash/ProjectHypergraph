@@ -23,6 +23,9 @@ private:
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = true))
 	float BaseDamage = 5.0f;
 
+	UPROPERTY(EditAnywhere)
+	class TSubclassOf<class UGameplayEffect> GameplayEffectClass;
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;

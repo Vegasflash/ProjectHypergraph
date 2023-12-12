@@ -6,6 +6,10 @@
 #include "DataAssets/ProjectileDataAsset.h"
 #include "BaseProjectile.generated.h"
 
+class UAbilitySystemComponent;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnBulletHitAbilityUser, UAbilitySystemComponent*, AbilityUser, EDirection, LastHitDir, ESurfaceType, SurfaceType);
+
 UCLASS()
 class HYPERGRAPH_API ABaseProjectile : public AActor
 {
@@ -13,13 +17,29 @@ class HYPERGRAPH_API ABaseProjectile : public AActor
 
 private:
 	UFUNCTION(Server, Reliable)
-	void Server_BulletHit(ESurfaceType SurfaceType);
+	void Server_BulletHit(AActor* OtherActor);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_BulletHit(ESurfaceType SurfaceType);
 
+	TWeakPtr<AActor> ProjectileInstigator;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* CollisionBox;
+
+	UPROPERTY(VisibleAnywhere)
+	class UProjectileMovementComponent* ProjectileMovementComp;
+
+	UPROPERTY(EditAnywhere)
+	class UParticleSystem* Tracer;
+
+	class UParticleSystemComponent* TracerComp;
 public:
 	ABaseProjectile();
+	virtual void Tick(float DeltaTime) override;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnBulletHitAbilityUser OnAbilityUserHit;
 
 protected:
 	virtual void BeginPlay() override;
@@ -34,18 +54,6 @@ protected:
 	UProjectileDataAsset* ProjectileData;
 
 public:
-	virtual void Tick(float DeltaTime) override;
-
-private:
-	UPROPERTY(EditAnywhere)
-	class UBoxComponent* CollisionBox;
-
-	UPROPERTY(VisibleAnywhere)
-	class UProjectileMovementComponent* ProjectileMovementComp;
-
-	UPROPERTY(EditAnywhere)
-	class UParticleSystem* Tracer;
-
-	class UParticleSystemComponent* TracerComp;
-
+	void SetProjectileInstigator(AActor* Instigator);
+	TWeakPtr<AActor> GetProjectileInstigator() { return ProjectileInstigator; }
 };

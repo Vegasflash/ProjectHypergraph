@@ -22,8 +22,7 @@ class HYPERGRAPH_API UCharacterCombatComponent : public UActorComponent, public 
 
 public:
 	UCharacterCombatComponent();
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-		FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	friend class ABaseCharacter;
 
@@ -40,7 +39,10 @@ public:
 	void ProcessWeaponEquip();
 
 	void OnRep_ReplicatedMovement_Implementation();
-
+	UFUNCTION(Server, Reliable)
+	void FireWeapon_Server();
+	UFUNCTION(NetMulticast, Reliable)
+	void FireWeapon_Multicast();
 protected:
 	virtual void BeginPlay() override;
 	void SetAiming(bool IsAiming);
@@ -55,8 +57,6 @@ protected:
 	void Server_SetAiming(bool IsAiming);
 	UFUNCTION(Server, Reliable)
 	void ServerFire(const FVector_NetQuantize& TraceHitTarget);
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastFire(const FVector_NetQuantize& TraceHitTarget);
 
 	void ProcessFiring();
 
@@ -172,7 +172,8 @@ private:
 
 	void SetHUDCrosshairs(float DeltaTime);
 
-	FHitResult ScanHitResult;
+	UPROPERTY(Replicated)
+	FVector ScanHitResult;
 
 	bool bRotateRootBone;
 	float TurnThreshold = 0.5f;
@@ -193,4 +194,5 @@ public:
 	FORCEINLINE float GetAimWalkSpeed() const { return AimWalkSpeed; }
 	FORCEINLINE const bool GetIsAiming() const { return bIsAiming; }
 	FORCEINLINE const bool ShouldRotateRootBone() const { return bRotateRootBone; }
+	FORCEINLINE const FVector& GetHitPosition() const { return ScanHitResult; }
 };

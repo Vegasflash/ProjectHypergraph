@@ -21,4 +21,7 @@ private:
 	TSubclassOf<ABaseProjectile> ProjectileClass;
 
 	virtual void Fire(const FVector& HitTarget) override;
+	
+public:
+	FORCEINLINE TSubclassOf<ABaseProjectile> GetProjectileClass() const { return ProjectileClass; }
 };

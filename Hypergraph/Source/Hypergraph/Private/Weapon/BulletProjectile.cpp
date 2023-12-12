@@ -5,7 +5,7 @@
 #include "Interfaces/Damageable.h"
 #include "Kismet/GameplayStatics.h"
 #include "Interfaces/ProjectileTarget.h"
-
+#include "ActorComponent/DamageProcessingComponent.h"
 
 
 ABulletProjectile::ABulletProjectile()

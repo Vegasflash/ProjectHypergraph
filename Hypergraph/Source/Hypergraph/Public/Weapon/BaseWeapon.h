@@ -7,11 +7,13 @@
 #include "GameFramework/Actor.h"
 #include "Cartridge.h"
 #include "DataAssets/WeaponDataAsset.h"
+#include "Interfaces/WorldInteractor.h"
+
 #include "BaseWeapon.generated.h"
 
 
 UCLASS()
-class HYPERGRAPH_API ABaseWeapon : public AActor
+class HYPERGRAPH_API ABaseWeapon : public AActor, public IWorldInteractor
 {
 	GENERATED_BODY()
 
@@ -23,6 +25,11 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void Fire(const FVector& HitTarget);
 	void Dropped();
+
+	//~ IWorldInteractor Interface
+	UFUNCTION()
+	virtual void GetWorldTransform_Implementation(FTransform& Transform) override;
+	//~ End IWorldInteractor
 
 protected:
 	virtual void BeginPlay() override;
@@ -72,6 +79,9 @@ private:
 
 	void RotatePickupWidgetTowardsPlayerCam();
 
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> PrimaryFireAbilityClass;
+
 public:
 	void SetWeaponState(EWeaponState State);
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
@@ -80,6 +90,7 @@ public:
 	//Crosshair
 	FORCEINLINE float GetRecoilIntensity() const { return RecoilIntensity; }
 	FORCEINLINE const TMap<ECrosshairPosition, UTexture2D*> GetCrosshairTextures() const { return CrosshairTextures; }
+	FORCEINLINE const TSubclassOf<class UGameplayAbility> GetPrimaryFireAbilityClass() const { return PrimaryFireAbilityClass; }
 
 	// Weapon Data
 	const UWeaponDataAsset* GetWeaponData() const { return WeaponData; }

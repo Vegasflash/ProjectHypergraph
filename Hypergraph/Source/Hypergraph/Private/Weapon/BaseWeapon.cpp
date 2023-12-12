@@ -69,6 +69,7 @@ void ABaseWeapon::Fire(const FVector& HitTarget)
 	{
 		World->SpawnActor<ACartridge>(Cartridge, Transform);
 	}
+
 }
 
 void ABaseWeapon::Dropped()
@@ -78,6 +79,11 @@ void ABaseWeapon::Dropped()
 	FDetachmentTransformRules DettachRules(EDetachmentRule::KeepWorld, true);
 	WeaponMesh->DetachFromComponent(DettachRules);
 	SetOwner(nullptr);
+}
+
+void ABaseWeapon::GetWorldTransform_Implementation(FTransform& Transform)
+{
+	Transform = GetTransform();
 }
 
 void ABaseWeapon::EndPlay(const EEndPlayReason::Type EndPlayReason)

@@ -10,6 +10,7 @@
 #include "Interfaces/CrosshairInteractable.h"
 #include "Interfaces/ProjectileTarget.h"
 #include "Interfaces/Damageable.h"
+#include "Interfaces/WorldInteractor.h"
 #include "Controller/ShooterController.h"
 #include "ActorComponent/DamageProcessingComponent.h"
 #include "Components/TimelineComponent.h"
@@ -22,8 +23,10 @@
 static const FName DISSOLVE_PARAM_NAME = TEXT("Dissolve");
 static const FName GLOW_INT_PARAM_NAME = TEXT("GlowIntensity");
 
+class AShooterPlayerState;
+
 UCLASS()
-class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInteractable, public IProjectileTarget, public IDamageable, public IAbilitySystemInterface
+class HYPERGRAPH_API ABaseCharacter : public ACharacter , public ICrosshairInteractable, public IProjectileTarget, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -43,11 +46,25 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_Elim();
 
-	// IProjectileTarget Inteface overrides
+	//~ IProjectileTarget Interface
 	virtual const ESurfaceType GetSurfaceType_Implementation() override;
-	// IDamageable Inteface overrides
-	UFUNCTION()
-	virtual void ReceiveDamage_Implementation(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser) override;
+	//~ End IProjectileTarget Interface
+	
+	// IDamageable Interface
+
+	UFUNCTION(Server, Reliable)
+	void Server_HitDetected(AController* Attacker, const EDirection& HitDirection);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_HitDetected(AController* Attacker, const EDirection& HitDirection);
+	virtual void HitDetected(AController* Attacker, const EDirection& HitDirection);
+
+	virtual void KillCharacter(AController* Attacker, const EDirection& HitDirection);
+	//~ End IDamageable Interface
+
+	//~ Begin IAbilitySystemInterface
+/** Returns our Ability System Component. */
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	//~ End IAbilitySystemInterface
 
 	UFUNCTION(Server, Reliable)
 	void Server_DoPlayerDeathSequence();
@@ -55,11 +72,15 @@ public:
 	void Multicast_DoPlayerDeathSequence();
 	void DoPlayerDeathSequence();
 
-	//~ Begin IAbilitySystemInterface
-/** Returns our Ability System Component. */
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	//~ End IAbilitySystemInterface
+	float GetHealth() const;
+	float GetMaxHealth() const;
 
+	UFUNCTION(Server, Reliable)
+	void RefreshHUD_Server();
+	UFUNCTION(NetMulticast, Reliable)
+	void RefreshHUD_Multicast();
+
+	void UpdateHUDHealth();
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -80,7 +101,12 @@ protected:
 
 private:
 	TArray<ICharacterComponent*> CharacterComponents;
-	AShooterController* ShooterController;
+
+	mutable TWeakObjectPtr<AShooterController> ShooterController;
+	AShooterController* GetShooterController() const;
+
+	mutable TWeakObjectPtr<AShooterPlayerState> ShooterPlayerState;
+	AShooterPlayerState* GetShooterPlayerState() const;
 
 	// Camera 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -123,15 +149,15 @@ private:
 	float CameraThreshold = 200.f;
 
 	/* Player Health */
-	UPROPERTY(EditAnywhere, Category = "Player Stats")
-	float MaxHealth = 100.f;
-	UPROPERTY(ReplicatedUsing = OnRep_Health, VisibleAnywhere, Category = "Player Stats")
-	float Health = 100.f;
+	//UPROPERTY(EditAnywhere, Category = "Player Stats")
+	//float MaxHealth = 100.f;
+	//UPROPERTY(ReplicatedUsing = OnRep_Health, VisibleAnywhere, Category = "Player Stats")
+	//float Health = 100.f;
 	bool bKilled = false;
 
-	UFUNCTION()
-	void OnRep_Health();
-	void UpdateHUDHealth();
+	//UFUNCTION()
+	//void OnRep_Health();
+	
 	//
 
 	/* Dissolve Effect*/
@@ -187,12 +213,10 @@ public:
 	FORCEINLINE bool IsAiming() const { return CombatComponent && CombatComponent->bIsAiming; }
 	FORCEINLINE UCharacterCombatComponent* GetCharacterCombat() const { return CombatComponent; }
 	FORCEINLINE ETurningInPlace GetTurningInPlace () const {return CombatComponent ? CombatComponent->GetETurningInPlace() : ETurningInPlace::ETIP_MAX; }
-	FORCEINLINE FHitResult* GetScanHitResult() const { return CombatComponent ? &CombatComponent->ScanHitResult : nullptr; }
+	FORCEINLINE const FVector& GetHitPosition() const { return CombatComponent ? CombatComponent->GetHitPosition() : FVector::ZeroVector; }
 	FORCEINLINE UCameraComponent* GetCamera() const { return FollowCamera; }
 	FORCEINLINE const bool ShouldRotateRootBone() const { return CombatComponent ? CombatComponent->ShouldRotateRootBone() : false; }
 	FORCEINLINE bool IsKilled() const { return bKilled; }
-	FORCEINLINE float GetHealth() const { return Health; }
-	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 
 	/*DEBUG*/
 	FORCEINLINE const bool DebugHitScanEnabled() const { return bHitScanDebugEnabled; }

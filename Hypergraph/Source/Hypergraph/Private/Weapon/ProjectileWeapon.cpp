@@ -36,7 +36,7 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 		if (UWorld* World = GetWorld())
 		{
 			auto Projectile = World->SpawnActor<ABaseProjectile>(ProjectileClass, MuzzleTransform.GetLocation(), TargetRotation,
-			                                    SpawnParams);
+				SpawnParams);
 		}
 	}
 }
