@@ -26,6 +26,16 @@ void AShooterController::OnPossess(APawn* aPawn)
 	}
 }
 
+void AShooterController::EndPlayingState()
+{
+	if (IsLocalController())
+	{
+		ShooterHUD->HideAnnouncementPopup();
+	}
+
+	Super::EndPlayingState();
+}
+
 void AShooterController::SetHUDHealth(float Health, float MaxHealth)
 {
 	ShooterHUD = ShooterHUD == nullptr ? Cast<AShooterHUD>(GetHUD()) : ShooterHUD;

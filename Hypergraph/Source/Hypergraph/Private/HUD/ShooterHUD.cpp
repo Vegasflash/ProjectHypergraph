@@ -4,21 +4,47 @@
 #include "HUD/ShooterHUD.h"
 #include "GameFramework/PlayerController.h"
 #include "HUD/CharacterOverlay.h"
+#include "HUD/AnnouncementPopup.h"
 
 void AShooterHUD::BeginPlay()
 {
 	Super::BeginPlay();
 
-	AddCharacterOverlay();
+	InitWidgets();
 }
 
-void AShooterHUD::AddCharacterOverlay()
+void AShooterHUD::InitWidgets()
 {
 	APlayerController* PlayerController = GetOwningPlayerController();
-	if (PlayerController && CharacterOverlayClass)
+	if (PlayerController)
 	{
-		CharacterOverlay = CreateWidget<UCharacterOverlay>(PlayerController, CharacterOverlayClass);
-		CharacterOverlay->AddToViewport();
+		if (CharacterOverlayClass)
+		{
+			CharacterOverlay = CreateWidget<UCharacterOverlay>(PlayerController, CharacterOverlayClass);
+			CharacterOverlay->AddToViewport();
+		}
+
+		if (AnnouncementPopupClass)
+		{
+			AnnouncementPopup = CreateWidget<UAnnouncementPopup>(PlayerController, AnnouncementPopupClass);
+		}
+	}
+}
+
+void AShooterHUD::ShowAnnouncementPopup(FText Text)
+{
+	if (AnnouncementPopup)
+	{
+		AnnouncementPopup->SetText(Text);
+		AnnouncementPopup->AddToViewport();
+	}
+}
+
+void AShooterHUD::HideAnnouncementPopup()
+{
+	if (AnnouncementPopup)
+	{
+		AnnouncementPopup->RemoveFromViewport();
 	}
 }
 

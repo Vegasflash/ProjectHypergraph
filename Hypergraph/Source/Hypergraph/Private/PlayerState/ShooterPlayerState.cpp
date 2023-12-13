@@ -76,14 +76,6 @@ void AShooterPlayerState::GiveAbilities()
 	}
 }
 
-void AShooterPlayerState::OnRep_DeathCount(int PrevDeathCount)
-{
-	if (ValidateControllerRef())
-	{
-		ShooterController->SetHUDDeaths(DeathCount);
-	}
-}
-
 void AShooterPlayerState::OnHealthAttributeUpdated(const FGameplayAttributeData& OldHealth, const FGameplayAttributeData& NewHealth)
 {
 	if (ValidateCharacterRef())
@@ -107,6 +99,14 @@ void AShooterPlayerState::OnRep_Score()
 	if (ValidateControllerRef())
 	{
 		ShooterController->SetHUDKills(GetScore());
+	}
+}
+
+void AShooterPlayerState::OnRep_DeathCount(int PrevDeathCount)
+{
+	if (ValidateControllerRef())
+	{
+		ShooterController->SetHUDDeaths(DeathCount);
 	}
 }
 

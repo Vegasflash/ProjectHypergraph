@@ -31,8 +31,11 @@ class HYPERGRAPH_API AShooterHUD : public AHUD
 
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
 	TSubclassOf<UUserWidget> CharacterOverlayClass;
+	TObjectPtr<class UCharacterOverlay> CharacterOverlay;
 
-	class UCharacterOverlay* CharacterOverlay;
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	TSubclassOf<UUserWidget> AnnouncementPopupClass;
+	TObjectPtr<class UAnnouncementPopup> AnnouncementPopup;
 	
 private:
 	FHUDPackage HUDPackage;
@@ -43,9 +46,12 @@ private:
 	float CrosshairSpreadMax = 16.f;
 
 	virtual void BeginPlay() override;
-	void AddCharacterOverlay();
+	void InitWidgets();
 
 public:
+	void ShowAnnouncementPopup(FText Text);
+	void HideAnnouncementPopup();
+
 	FORCEINLINE void SetHUDPackage(const FHUDPackage& Package) { HUDPackage = Package; }
 	FORCEINLINE UCharacterOverlay* GetCharacterOverlay() const { return CharacterOverlay; }
 };

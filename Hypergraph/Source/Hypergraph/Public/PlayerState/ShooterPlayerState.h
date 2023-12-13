@@ -68,6 +68,7 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	FORCEINLINE class UGlobalAttributeSet* GetAttributes() { return Attributes; }
+	FORCEINLINE int GetDeathCount() { return DeathCount; }
 
 	// Inherited via IAbilitySystemInterface
 };

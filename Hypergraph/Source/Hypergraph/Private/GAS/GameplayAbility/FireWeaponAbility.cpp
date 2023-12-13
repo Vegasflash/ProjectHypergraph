@@ -99,7 +99,7 @@ void UFireWeaponAbility::OnBulletHitAbilityUser(UAbilitySystemComponent* TargetA
 	// Make Sure this is called AFTER applying Game Effect.
 	if (auto HitChararacter = Cast<ABaseCharacter>(TargetASC->GetAvatarActor()))
 	{
-		HitChararacter->Server_HitDetected(HitChararacter->GetController(), LastHitDirection);
+		HitChararacter->Server_HitDetected(AbilityOwner->GetPlayerController(), LastHitDirection);
 	}
 }
 

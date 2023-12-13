@@ -156,7 +156,7 @@ void ABaseCharacter::OnRep_PlayerState()
 
 	ShooterController->SetHUDHealth(GetHealth(), GetMaxHealth());
 	ShooterController->SetHUDKills(ShooterPlayerState->GetScore());
-	ShooterController->SetHUDDeaths(0);
+	ShooterController->SetHUDDeaths(ShooterPlayerState->GetDeathCount());
 }
 
 void ABaseCharacter::Multicast_Elim_Implementation()
@@ -171,6 +171,11 @@ void ABaseCharacter::Multicast_Elim_Implementation()
 		if (auto Pawn = LocalPlayerController->GetPawn())
 		{
 			Pawn->DisableInput(LocalPlayerController);
+		}
+
+		if (AShooterHUD* ShooterHUD = Cast<AShooterHUD>(LocalPlayerController->GetHUD()))
+		{
+			ShooterHUD->ShowAnnouncementPopup(FText::FromString(TEXT("DEFEAT")));
 		}
 	}
 }
@@ -340,6 +345,7 @@ void ABaseCharacter::Server_HitDetected_Implementation(AController* Attacker, co
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SERVER: Health = %f"), curHp);
 		HitDetected(Attacker, HitDirection);
+		return;
 	}
 
 	Multicast_HitDetected(Attacker, HitDirection);
@@ -348,9 +354,9 @@ void ABaseCharacter::Server_HitDetected_Implementation(AController* Attacker, co
 void ABaseCharacter::Multicast_HitDetected_Implementation(AController* Attacker, const EDirection& HitDirection)
 {
 	auto curHp = GetShooterPlayerState()->GetAttributes()->GetHealth();
-	
+
 	UE_LOG(LogTemp, Warning, TEXT("CLIENT: Health = %f"), curHp);
-	
+
 	HitDetected(Attacker, HitDirection);
 }
 
@@ -369,73 +375,16 @@ void ABaseCharacter::HitDetected(AController* Attacker, const EDirection& HitDir
 
 void ABaseCharacter::KillCharacter(AController* Attacker, const EDirection& HitDirection)
 {
-	CombatComponent->PlayDeathReactMontage(HitDirection);
 	// This is only being executed on the Server
+	CombatComponent->PlayDeathReactMontage(HitDirection);
 
-	//float HealthPreview = FMath::Clamp(GetHealth() - Damage, 0.f, GetMaxHealth());
-
-	if (CombatComponent)
-	{
-		// Notify Hit Actors of impact.
-		//if (DamagedActor->Implements<UProjectileTarget>())
-		{
-			//TScriptInterface<IProjectileTarget> target;
-			//target.SetObject(DamagedActor);
-			//
-			//
-			//ESurfaceType HitSurface = target->Execute_GetSurfaceType(DamagedActor);
-		}
-		//else
-		{
-			//UE_LOG(LogTemp, Warning, TEXT("Projectile hit an unknown surface type."));
-		}
-
-		// Health is updated, now we execute the Animations for character hit.
-		//FVector StartLocation = DamageCauser->GetActorLocation();
-		//FVector EndLocation = DamagedActor->GetActorLocation();
-		//
-		//FCollisionQueryParams CollisionParams;
-		//CollisionParams.AddIgnoredActor(DamageCauser);
-
-		//FHitResult HitResult;
-		//if (GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams))
-		//{
-		//	FVector ImpactNormal = HitResult.ImpactNormal;
-		//
-		//	FTransform Transform = DamagedActor->GetActorTransform();
-		//	FVector OtherForward = Transform.GetUnitAxis(EAxis::X);
-		//	FVector OtherRight = Transform.GetUnitAxis(EAxis::Y);
-		//
-		//	float DotForward = FVector::DotProduct(ImpactNormal, OtherForward);
-		//	float DotRight = FVector::DotProduct(ImpactNormal, OtherRight);
-		//
-		//	LastHitDirection =
-		//		DotForward > 0.7f ? LastHitDirection = EDirection::ED_Forward :
-		//		DotForward < -0.7f ? LastHitDirection = EDirection::ED_Back :
-		//		DotRight > 0.7f ? LastHitDirection = EDirection::ED_Right :
-		//		DotRight < -0.7f ? LastHitDirection = EDirection::ED_Left :
-		//		EDirection::ED_Forward;
-		//
-		//	if (HealthPreview <= 0)
-		//	{
-		//		if (AShooterGameMode* CurrentGameMode = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode()))
-		//		{
-		//			AShooterController* AttackerController = Cast<AShooterController>(InstigatedBy);
-		//			CurrentGameMode->PlayerEliminated(this, GetShooterController(), AttackerController);
-		//		}
-		//	}
-		//
-		//	Server_PlayDamageMontage(LastHitDirection, Damage);
-		//}
-	}
-
-	if (AShooterGameMode* CurrentGameMode = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode()))
+	//Server_KillCharacter(Attacker);
+	AShooterGameMode* CurrentGameMode = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode());
+	if (CurrentGameMode)
 	{
 		AShooterController* AttackerController = Cast<AShooterController>(Attacker);
 		CurrentGameMode->PlayerEliminated(this, GetShooterController(), AttackerController);
 	}
-
-	//UpdateHUDHealth();
 }
 
 #pragma region Ragdoll
@@ -553,7 +502,7 @@ void ABaseCharacter::RefreshHUD_Multicast_Implementation()
 
 void ABaseCharacter::UpdateHUDHealth()
 {
-	if (!GetShooterController()) return; 
+	if (!GetShooterController()) return;
 
 	ShooterController->SetHUDHealth(GetHealth(), GetMaxHealth());
 }

@@ -20,6 +20,7 @@ public:
 	void SetHUDDeaths(float Deaths);
 
 	virtual void OnPossess(APawn* aPawn) override;
+	virtual void EndPlayingState();
 
 protected:
 	virtual void BeginPlay() override;
